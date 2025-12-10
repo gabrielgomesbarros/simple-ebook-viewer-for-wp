@@ -8,10 +8,14 @@ use Kucrut\Vite;
 class SIMEBV_Viewer extends SIMEBV_Base {
 
     public static function init() {
+        do_action('simebv_viewer_before_init');
+
         add_shortcode('simebv_viewer', [self::class, 'render_ebook_viewer']);
         add_action('wp_enqueue_scripts', [self::class, 'conditionally_enqueue_assets']);
         add_action('wp_enqueue_scripts', [self::class, 'register_javascript_translations'], 100);
         // add_action('enqueue_block_editor_assets', [self::class, 'enqueue_block_editor_assets']);
+
+        do_action('simebv_viewer_after_init');
     }
 
     // public static function initializeFS() {
@@ -99,7 +103,8 @@ class SIMEBV_Viewer extends SIMEBV_Base {
     </noscript>
 </section>
         <?php
-        return ob_get_clean();
+        $viewer_html_code = ob_get_clean();
+        return apply_filters('simebv_viewer_html_code', $viewer_html_code);
     }
 
     public static function setup_styles($attrs) {

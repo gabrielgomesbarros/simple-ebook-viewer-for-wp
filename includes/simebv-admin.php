@@ -7,12 +7,16 @@ if (!defined('ABSPATH')) {
 class SIMEBV_Admin extends SIMEBV_Base {
 
     public static function init() {
+        do_action('simebv_admin_before_init');
+
         add_action('admin_init', [self::class, 'suggest_privacy_policy']);
         add_filter('upload_mimes', [self::class, 'allow_ebook_uploads']);
         add_action('add_attachment', [self::class, 'handle_ebook_uploads'], 10, 1);
         add_filter('attachment_fields_to_edit', [self::class, 'add_media_custom_field'], 10, 2);
         add_filter('attachment_fields_to_save', [self::class, 'save_media_custom_field'], 10, 2);
         add_filter('wp_check_filetype_and_ext', [self::class, 'allow_azw_uploads'], 100, 5);
+
+        do_action('simebv_admin_after_init');
     }
 
     public static function suggest_privacy_policy() {
