@@ -5,7 +5,8 @@ if (!defined('ABSPATH')) {
 
 use Kucrut\Vite;
 
-class SIMEBV_Viewer {
+class SIMEBV_Viewer extends SIMEBV_Base {
+
     public static function init() {
         add_shortcode('simebv_viewer', [self::class, 'render_ebook_viewer']);
         add_action('wp_enqueue_scripts', [self::class, 'conditionally_enqueue_assets']);
@@ -50,27 +51,7 @@ class SIMEBV_Viewer {
     public static function render_ebook_viewer($atts) {
         // add default value for attributes in the shortcode
         $atts = shortcode_atts(
-            [
-                'book' => '',
-                'height' => '',
-                'width' => '',
-                'max-height' => '',
-                'max-width' => '',
-                'border' => '',
-                'style' => '',
-                'class' => '',
-                'max-pages' => '',
-                'color-scheme' => '',
-                'zoom' => '',
-                'layout' => '',
-                'default-font-size' => '',
-                'page-margins' => '',
-                'activate-color-filter' => '',
-                'invert-color-filter' => '',
-                'rotate-color-filter' => '',
-                'bg-transparent-filter' => '',
-                'bg-color-filter' => '',
-            ],
+            self::shortcode_viewer_atts_with_defaults(),
             $atts,
             'simebv_viewer'
         );
@@ -105,19 +86,10 @@ class SIMEBV_Viewer {
     id="simebv-reader-container"
     data-ebook-id="<?php echo esc_attr($ebook_id); ?>"
     <?php
-        echo strlen($styles['container']) !== 0 ? 'style="' . esc_attr($styles['container']) . '"' : '';
-        echo strlen($atts['class']) !== 0 ? 'class="' . esc_attr($atts['class']) . '"' : '';
-        echo strlen($atts['max-pages']) !== 0 ? 'data-simebv-maxpages="' . esc_attr($atts['max-pages']) . '"' : '';
-        echo strlen($atts['color-scheme']) !== 0 ? 'data-simebv-colors="' . esc_attr($atts['color-scheme']) . '"' : '';
-        echo strlen($atts['zoom']) !== 0 ? 'data-simebv-zoom="' . esc_attr($atts['zoom']) . '"' : '';
-        echo strlen($atts['layout']) !== 0 ? 'data-simebv-layout="' . esc_attr($atts['layout']) . '"' : '';
-        echo strlen($atts['default-font-size']) !== 0 ? 'data-simebv-fontsize="' . esc_attr($atts['default-font-size']) . '"' : '';
-        echo strlen($atts['page-margins']) !== 0 ? 'data-simebv-margins="' . esc_attr($atts['page-margins']) . '"' : '';
-        echo strlen($atts['activate-color-filter']) !== 0 ? 'data-simebv-activatecolorfilter="' . esc_attr($atts['activate-color-filter']) . '"' : '';
-        echo strlen($atts['invert-color-filter']) !== 0 ? 'data-simebv-invertcolorsfilter="' . esc_attr($atts['invert-color-filter']) . '"' : '';
-        echo strlen($atts['rotate-color-filter']) !== 0 ? 'data-simebv-rotatecolorsfilter="' . esc_attr($atts['rotate-color-filter']) . '"' : '';
-        echo strlen($atts['bg-transparent-filter']) !== 0 ? 'data-simebv-bgfiltertransparent="' . esc_attr($atts['bg-transparent-filter']) . '"' : '';
-        echo strlen($atts['bg-color-filter']) !== 0 ? 'data-simebv-bgcolorsfilter="' . esc_attr($atts['bg-color-filter']) . '"' : '';
+        echo strlen($styles['container']) !== 0 ? 'style="' . esc_attr($styles['container']) . '" ' : '';
+        foreach(self::$shortcode_viewer_atts['html_attributes'] as $name => $vals) {
+            echo strlen($atts[$name]) !== 0 ? $vals['html_name'] . '="' . esc_attr($atts[$name]) . '" ' : '';
+        }
     ?>
     tabindex="0"
     aria-label="Ebook reader"
@@ -132,34 +104,18 @@ class SIMEBV_Viewer {
 
     public static function setup_styles($attrs) {
         $style_container = '';
-        if (
-            strlen($attrs['height']) !== 0
-            || strlen($attrs['width']) !== 0
-            || strlen($attrs['max-height']) !== 0
-            || strlen($attrs['max-width']) !== 0
-            || strlen($attrs['border']) !== 0
-            || strlen($attrs['style']) !== 0
-        ) {
-            if (strlen($attrs['height']) !== 0) {
-                $style_container .= "height:" . $attrs['height'] . ";";
+        foreach (array_keys(self::$shortcode_viewer_atts['style_attributes']) as $name) {
+            if (strlen($attrs[$name]) === 0) {
+                continue;
             }
-            if (strlen($attrs['width']) !== 0) {
-                $style_container .= "width:" . $attrs['width'] . ";";
-            }
-            if (strlen($attrs['max-height']) !== 0) {
-                $style_container .= "max-height:" . $attrs['max-height'] . ";";
-            }
-            if (strlen($attrs['max-width']) !== 0) {
-                $style_container .= "max-width:" . $attrs['max-width'] . ";";
-            }
-            if (strlen($attrs['border']) !== 0) {
-                $style_container .= "border:" . $attrs['border'] . ";";
-            }
-            if (strlen($attrs['style']) !== 0) {
-                $style_container .= trim($attrs['style']);
+            if ($name === 'style') {
+                $style_container .= trim($attrs[$name]);
                 if (!str_ends_with($style_container, ';')) {
                     $style_container .= ';';
                 }
+            }
+            else {
+                $style_container .= $name . ':' . $attrs[$name] . ';';
             }
         }
         if (strlen($attrs['max-height'] === 0 && strlen($attrs['height']) === 0)) {

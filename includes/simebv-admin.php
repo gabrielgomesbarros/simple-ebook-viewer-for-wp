@@ -4,17 +4,7 @@ if (!defined('ABSPATH')) {
 }
 
 
-class SIMEBV_Admin {
-
-    public static $ebook_mimetypes = [
-        'epub' => 'application/epub+zip',
-        'cbz' => 'application/vnd.comicbook+zip',
-        'fb2' => 'application/x-fictionbook+xml',
-        'fbz' => 'application/x-zip-compressed-fb2',
-        'mobi' => 'application/x-mobipocket-ebook',
-        'azw' => 'application/vnd.amazon.ebook',
-        'azw3' => 'application/vnd.amazon.ebook',
-    ];
+class SIMEBV_Admin extends SIMEBV_Base {
 
     public static function init() {
         add_action('admin_init', [self::class, 'suggest_privacy_policy']);

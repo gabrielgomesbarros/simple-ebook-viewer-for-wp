@@ -24,6 +24,7 @@ add_action('init', function() {
 }, 100);
 
 require_once SIMEBV_PLUGIN_DIR . 'vendor/vite-for-wp/vite-for-wp.php';
+require_once SIMEBV_PLUGIN_DIR . 'includes/simebv-base.php';
 require_once SIMEBV_PLUGIN_DIR . 'includes/simebv-viewer.php';
 require_once SIMEBV_PLUGIN_DIR . 'includes/simebv-admin.php';
 
