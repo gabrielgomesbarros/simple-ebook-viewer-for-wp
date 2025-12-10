@@ -18,6 +18,20 @@ class SIMEBV_Viewer extends SIMEBV_Base {
         do_action('simebv_viewer_after_init');
     }
 
+    private static $js_core_script_handle = 'simebv-viewer-lib';
+    private static $js_core_script_path = 'src/js/simebv-viewer.js';
+
+    public static function get_js_core_script_handle() {
+        return self::$js_core_script_handle;
+    }
+
+    private static $js_init_script_handle = 'simebv-viewer-init';
+    private static $js_init_script_path = 'src/js/simebv-init.js';
+
+    public static function get_js_init_script_handle() {
+        return self::$js_init_script_handle;
+    }
+
     // public static function initializeFS() {
     //     $creds = request_filesystem_credentials(trailingslashit(SIMEBV_PLUGIN_URL) . 'books', '', false, SIMEBV_PLUGIN_DIR . 'books');
     //     if (!WP_Filesystem($creds)) {
@@ -28,8 +42,38 @@ class SIMEBV_Viewer extends SIMEBV_Base {
 
     public static function register_javascript_translations() {
         wp_set_script_translations(
-            'simebv-viewer-lib', 'simple-ebook-viewer', SIMEBV_PLUGIN_DIR . 'languages/'
+            self::$js_core_script_handle, 'simple-ebook-viewer', SIMEBV_PLUGIN_DIR . 'languages/'
         );
+    }
+
+    private static function enqueue_assets($handle, $path, $dependencies, $in_footer = true) {
+        return Vite\enqueue_asset(
+            SIMEBV_PLUGIN_DIR . '/dist',
+            $path,
+            [
+                'handle' => $handle,
+                'dependencies' => $dependencies,
+                'in-footer' => $in_footer,
+            ]
+        );
+    }
+
+    public static function enqueue_core_js() {
+        self::enqueue_assets(
+            self::$js_core_script_handle,
+            self::$js_core_script_path,
+            ['wp-i18n', 'wp-api'],
+        );
+        do_action('simebv_enqueued_core_js');
+    }
+
+    public static function enqueue_init_js() {
+        self::enqueue_assets(
+            self::$js_init_script_handle,
+            self::$js_init_script_path,
+            [self::$js_core_script_handle],
+        );
+        do_action('simebv_enqueued_init_js');
     }
 
     public static function conditionally_enqueue_assets() {
@@ -39,15 +83,8 @@ class SIMEBV_Viewer extends SIMEBV_Base {
 
         global $post;
         if (has_shortcode($post->post_content, 'simebv_viewer')) {
-            Vite\enqueue_asset(
-                SIMEBV_PLUGIN_DIR . '/dist',
-                'src/js/simebv-viewer.js',
-                [
-                    'handle' => 'simebv-viewer-lib',
-                    'dependencies' => ['wp-i18n', 'wp-api'],
-                    'in-footer' => true,
-                ]
-            );
+            self::enqueue_core_js();
+            self::enqueue_init_js();
         }
 
     }
