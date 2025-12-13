@@ -79,7 +79,7 @@ const formatContributor = contributor => Array.isArray(contributor)
     ? listFormat.format(contributor.map(formatOneContributor))
     : formatOneContributor(contributor)
 
-class Reader {
+export class Reader {
     #root
     #rootDiv
     #bookContainer
@@ -1048,16 +1048,6 @@ ${viewerUiCss}
 </div>
 `
 
-const open = async file => {
-    let container = document.getElementById('simebv-reader-container')
-    if (!container) {
-        container = document.createElement('section')
-        container.id = 'simebv-reader-container'
-    }
-    const reader = new Reader(container)
-    await reader.open(file)
-}
-
 const dragOverHandler = e => e.preventDefault()
 const dropHandler = e => {
     e.preventDefault()
@@ -1069,37 +1059,58 @@ const dropHandler = e => {
     }
 }
 
-async function get_ebook_url(id) {
+
+export const open = async (file, args, containerID) => {
+    let container = document.getElementById(containerID)
+    if (!container) {
+        container = document.createElement('section')
+        container.id = containerID
+    }
+    const reader = new Reader(container, args)
+    await reader.open(file)
+    return container
+}
+
+
+const get_ebook_url = async id => {
     await wp.api.loadPromise
     let media = new wp.api.models.Media({ id: id })
     let res = await media.fetch()
     return new URL(res.source_url).href
 }
 
-const ebook_path_el = document.getElementById('simebv-reader-container');
-if (ebook_path_el) {
-    let url
-    try {
-        url = await get_ebook_url(ebook_path_el.getAttribute('data-ebook-id'))
-    } catch (e) {
-        if (url) url = undefined
-        ebook_path_el.style.textAlign = 'center'
-        ebook_path_el.style.padding = '12px'
-        ebook_path_el.innerText = ''
-        const msg = __('Error: I couldn\'t retrieve the book to display.', 'simple-ebook-viewer')
-        ebook_path_el.append(msg)
-        console.error(e)
-        if (e.status === 404) {
-            ebook_path_el.append(
-                document.createElement('br'),
-                __('Resource not found on the server', 'simple-ebook-viewer')
-            )
+
+export const show_error_msg = (container, msg) => {
+    container.style.textAlign = 'center'
+    container.style.padding = '12px'
+    container.innerText = ''
+    container.append(msg)
+}
+
+
+export const initializeViewer = async containerID => {
+    const ebook_path_el = document.getElementById(containerID);
+    if (ebook_path_el) {
+        let url
+        try {
+            url = await get_ebook_url(ebook_path_el.getAttribute('data-ebook-id'))
+        } catch (e) {
+            if (url) url = undefined
+            const msg = __('Error: I couldn\'t retrieve the book to display.', 'simple-ebook-viewer')
+            show_error_msg(ebook_path_el, msg)
+            console.error(e)
+            if (e.status === 404) {
+                ebook_path_el.append(
+                    document.createElement('br'),
+                    __('Resource not found on the server', 'simple-ebook-viewer')
+                )
+            }
+            else if (e.responseJSON?.message) {
+                ebook_path_el.append(document.createElement('br'), e.responseJSON.message)
+            }
         }
-        else if (e.responseJSON?.message) {
-            ebook_path_el.append(document.createElement('br'), e.responseJSON.message)
+        if (url) {
+            open(url, undefined, containerID).catch(e => console.error(e));
         }
-    }
-    if (url) {
-        open(url).catch(e => console.error(e));
     }
 }
