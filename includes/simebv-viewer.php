@@ -90,6 +90,9 @@ class SIMEBV_Viewer extends SIMEBV_Base {
     }
 
     public static function render_ebook_viewer($atts) {
+        if (!is_singular()) {
+            return;
+        }
         // add default value for attributes in the shortcode
         $atts = shortcode_atts(
             self::shortcode_viewer_atts_with_defaults(),
