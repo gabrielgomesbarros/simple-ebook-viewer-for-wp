@@ -80,25 +80,25 @@ const formatContributor = contributor => Array.isArray(contributor)
     : formatOneContributor(contributor)
 
 export class Reader {
-    #root
-    #rootDiv
-    #bookContainer
-    #tocView
-    #sideBar
-    #sideBarButton
-    #overlay
-    #menuButton
-    #fullscreenButton
-    #colorsFilterDialog
-    #searchDialog
-    #currentSearch
-    #currentSearchQuery
-    #currentSearchResult = []
-    #currentSearchResultIndex = -1
-    #lastReadPage
+    _root
+    _rootDiv
+    _bookContainer
+    _tocView
+    _sideBar
+    _sideBarButton
+    _overlay
+    _menuButton
+    _fullscreenButton
+    _colorsFilterDialog
+    _searchDialog
+    _currentSearch
+    _currentSearchQuery
+    _currentSearchResult = []
+    _currentSearchResultIndex = -1
+    _lastReadPage
     // don't save user preferences during page load, but only upon user interaction
-    #canSavePreferences = false
-    #appliedFilter = {
+    _canSavePreferences = false
+    _appliedFilter = {
         activateColorFilter: false,
         invertColorsFilter: 0,
         rotateColorsFilter: 0,
@@ -118,13 +118,13 @@ export class Reader {
     container
     menu
 
-    closeMenus() {
+    _closeMenus() {
         let focusTo
-        if (this.#sideBar.classList.contains('simebv-show')) {
-            focusTo = this.#sideBarButton
+        if (this._sideBar.classList.contains('simebv-show')) {
+            focusTo = this._sideBarButton
         }
-        this.#overlay.classList.remove('simebv-show')
-        this.#sideBar.classList.remove('simebv-show')
+        this._overlay.classList.remove('simebv-show')
+        this._sideBar.classList.remove('simebv-show')
         this.menu.element.hide()
         if (focusTo) {
             focusTo.focus()
@@ -133,34 +133,34 @@ export class Reader {
 
     constructor(container) {
         this.container = container ?? document.body
-        this.#root = this.container.attachShadow({ mode: 'open' })
-        this.#root.innerHTML = readerMarkup
-        this.#rootDiv = this.#root.querySelector('#simebv-reader-root')
-        this.setLocalizedDefaultInterface(this.#root)
-        this.#bookContainer = this.#root.querySelector('#simebv-book-container')
-        this.#sideBar = this.#root.querySelector('#simebv-side-bar')
-        this.#sideBarButton = this.#root.querySelector('#simebv-side-bar-button')
-        this.#overlay = this.#root.querySelector('#simebv-dimming-overlay')
-        this.#menuButton = this.#root.querySelector('#simebv-menu-button')
-        this.#fullscreenButton = this.#root.querySelector('#full-screen-button')
+        this._root = this.container.attachShadow({ mode: 'open' })
+        this._root.innerHTML = readerMarkup
+        this._rootDiv = this._root.querySelector('#simebv-reader-root')
+        this.setLocalizedDefaultInterface(this._root)
+        this._bookContainer = this._root.querySelector('#simebv-book-container')
+        this._sideBar = this._root.querySelector('#simebv-side-bar')
+        this._sideBarButton = this._root.querySelector('#simebv-side-bar-button')
+        this._overlay = this._root.querySelector('#simebv-dimming-overlay')
+        this._menuButton = this._root.querySelector('#simebv-menu-button')
+        this._fullscreenButton = this._root.querySelector('#full-screen-button')
 
-        this.#sideBarButton.addEventListener('click', () => {
-            this.#sideBar.style.display = null;
+        this._sideBarButton.addEventListener('click', () => {
+            this._sideBar.style.display = null;
             setTimeout(() => {
-                this.#overlay.classList.add('simebv-show')
-                this.#sideBar.classList.add('simebv-show')
-                this.#tocView.getCurrentItem()?.focus()
+                this._overlay.classList.add('simebv-show')
+                this._sideBar.classList.add('simebv-show')
+                this._tocView.getCurrentItem()?.focus()
             }, 20)
         })
-        this.#overlay.addEventListener('click', () => {
-            this.closeMenus()
+        this._overlay.addEventListener('click', () => {
+            this._closeMenus()
         })
-        this.#sideBar.addEventListener('click', () => {
-            this.#tocView.getCurrentItem()?.focus()
+        this._sideBar.addEventListener('click', () => {
+            this._tocView.getCurrentItem()?.focus()
         })
-        this.#root.addEventListener('closeMenu', () => {
-            if (!this.#sideBar.classList.contains('simebv-show')) {
-                this.#overlay.classList.remove('simebv-show')
+        this._root.addEventListener('closeMenu', () => {
+            if (!this._sideBar.classList.contains('simebv-show')) {
+                this._overlay.classList.remove('simebv-show')
             }
         })
 
@@ -216,7 +216,7 @@ export class Reader {
                         this.menu.groups.margins.enable(true)
                     }
                     this.view?.renderer.setAttribute('flow', value)
-                    this.#savePreference('layout', value)
+                    this._savePreference('layout', value)
                 },
                 horizontal: false,
             },
@@ -229,7 +229,7 @@ export class Reader {
                 ],
                 onclick: value => {
                     this.view?.renderer.setAttribute('max-column-count', value)
-                    this.#savePreference('maxPages', value)
+                    this._savePreference('maxPages', value)
                 },
                 horizontal: true,
             },
@@ -246,7 +246,7 @@ export class Reader {
                 onclick: value => {
                     this.style.fontSize = value
                     this.view?.renderer.setStyles?.(getCSS(this.style))
-                    this.#savePreference('fontSize', value)
+                    this._savePreference('fontSize', value)
                 },
                 horizontal: false,
             },
@@ -262,7 +262,7 @@ export class Reader {
                 onclick: value => {
                     this.view?.renderer.setAttribute('gap', value)
                     this.view?.renderer.setAttribute('max-block-size', `calc(100% - ${value.slice(0, -1) * 2}%)`)
-                    this.#savePreference('margins', value)
+                    this._savePreference('margins', value)
                 },
                 horizontal: false,
             },
@@ -279,8 +279,8 @@ export class Reader {
                 onclick: value => {
                     switch (value) {
                         case 'simebv-sepia':
-                            this.#rootDiv.classList.add(value)
-                            this.#rootDiv.classList.remove(
+                            this._rootDiv.classList.add(value)
+                            this._rootDiv.classList.remove(
                                 'simebv-supports-dark', 'simebv-light', 'simebv-dark'
                             )
                             this.style.colorScheme = 'only light'
@@ -288,8 +288,8 @@ export class Reader {
                             this.view?.renderer.setStyles?.(getCSS(this.style))
                             break
                         case 'simebv-light':
-                            this.#rootDiv.classList.add(value)
-                            this.#rootDiv.classList.remove(
+                            this._rootDiv.classList.add(value)
+                            this._rootDiv.classList.remove(
                                 'simebv-supports-dark', 'simebv-sepia', 'simebv-dark'
                             )
                             this.style.colorScheme = 'only light'
@@ -297,8 +297,8 @@ export class Reader {
                             this.view?.renderer.setStyles?.(getCSS(this.style))
                             break
                         case 'simebv-dark':
-                            this.#rootDiv.classList.add(value)
-                            this.#rootDiv.classList.remove(
+                            this._rootDiv.classList.add(value)
+                            this._rootDiv.classList.remove(
                                 'simebv-supports-dark', 'simebv-sepia', 'simebv-light'
                             )
                             this.style.colorScheme = 'only dark'
@@ -307,15 +307,15 @@ export class Reader {
                             break
                         case 'auto':
                         default:
-                            this.#rootDiv.classList.add('simebv-supports-dark')
-                            this.#rootDiv.classList.remove(
+                            this._rootDiv.classList.add('simebv-supports-dark')
+                            this._rootDiv.classList.remove(
                                 'simebv-sepia', 'simebv-light', 'simebv-dark'
                             )
                             this.style.colorScheme = 'light dark'
                             this.style.bgColor = 'transparent'
                             this.view?.renderer.setStyles?.(getCSS(this.style))
                     }
-                    this.#savePreference('colors', value)
+                    this._savePreference('colors', value)
                 },
                 horizontal: false,
             },
@@ -323,7 +323,7 @@ export class Reader {
                 name: 'colorFilter',
                 label: __('Color filter...', 'simple-ebook-viewer'),
                 type: 'action',
-                onclick: () => this.openFilterDialog(this.#bookContainer),
+                onclick: () => this.openFilterDialog(this._bookContainer),
                 attrs: [
                     ['aria-haspopup', 'dialog'],
                 ],
@@ -358,16 +358,16 @@ export class Reader {
                         case 'fit-page':
                         case 'fit-width':
                             this.view?.renderer?.setAttribute('zoom', value)
-                            this.#savePreference('zoom', value)
+                            this._savePreference('zoom', value)
                             break
                         case 'custom':
-                            let val = this.#root.getElementById('simebv-zoom-numeric').value
+                            let val = this._root.getElementById('simebv-zoom-numeric').value
                             if (!isNumeric(val) || val < 10 || val > 400 ) {
                                 val = 100
                             }
                             this.view?.renderer?.setAttribute('zoom', val / 100)
-                            this.#savePreference('custom-zoom', val)
-                            this.#savePreference('zoom', value)
+                            this._savePreference('custom-zoom', val)
+                            this._savePreference('zoom', value)
                             break
                         default:
                             if (!isNumeric(value)) {
@@ -375,7 +375,7 @@ export class Reader {
                             }
                             value = Number(value)
                             if (value >= 10 && value <= 400) {
-                                const inputElem = this.#root.getElementById('simebv-zoom-numeric')
+                                const inputElem = this._root.getElementById('simebv-zoom-numeric')
                                 inputElem.value = value
                                 inputElem.dispatchEvent(new Event('change'))
                             }
@@ -393,103 +393,102 @@ export class Reader {
         this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
         if (screen?.orientation) {
             screen.orientation.addEventListener('change', () => {
-                console.log('orientatin changed')
                 this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
             })
         }
         this.menu.element.addEventListener('click', (e) => e.stopPropagation())
 
-        this.#menuButton.append(this.menu.element)
-        this.#menuButton.querySelector('button').addEventListener('click', (e) => {
+        this._menuButton.append(this.menu.element)
+        this._menuButton.querySelector('button').addEventListener('click', (e) => {
             if (!this.menu.element.classList.contains('simebv-show')) {
-                this.menu.element.show(this.#menuButton.querySelector('button'))
-                this.#overlay.classList.add('simebv-show')
+                this.menu.element.show(this._menuButton.querySelector('button'))
+                this._overlay.classList.add('simebv-show')
             }
             else {
-                this.closeMenus()
+                this._closeMenus()
             }
         })
-        this.#loadMenuPreferences([
+        this._loadMenuPreferences([
             ['fontSize', 18],
         ])
         this.menu.groups.history.items.previous.enable(false)
         this.menu.groups.history.items.next.enable(false)
 
-        this.#fullscreenButton.addEventListener('click', this.#toggleFullViewport.bind(this))
+        this._fullscreenButton.addEventListener('click', this._toggleFullViewport.bind(this))
     }
 
     get containerHeight() {
         return this.container.getBoundingClientRect().height
     }
 
-    createFilterDialog(bookContainer, isFixedLayout) {
-        if (!this.#colorsFilterDialog) {
-            this.#colorsFilterDialog = colorFiltersDialog(bookContainer, this.#appliedFilter, isFixedLayout)
-            this.#colorsFilterDialog.id = 'simebv-colors-filter-dialog'
-            this.#rootDiv.append(this.#colorsFilterDialog)
-            this.#colorsFilterDialog.addEventListener('close', () => {
-                for (const prop in this.#appliedFilter) {
-                    this.#savePreference(prop, this.#appliedFilter[prop])
+    _createFilterDialog(bookContainer, isFixedLayout) {
+        if (!this._colorsFilterDialog) {
+            this._colorsFilterDialog = colorFiltersDialog(bookContainer, this._appliedFilter, isFixedLayout)
+            this._colorsFilterDialog.id = 'simebv-colors-filter-dialog'
+            this._rootDiv.append(this._colorsFilterDialog)
+            this._colorsFilterDialog.addEventListener('close', () => {
+                for (const prop in this._appliedFilter) {
+                    this._savePreference(prop, this._appliedFilter[prop])
                 }
             })
         }
     }
 
     openFilterDialog(bookContainer) {
-        if (!this.#colorsFilterDialog) {
-            this.createFilterDialog(bookContainer)
+        if (!this._colorsFilterDialog) {
+            this._createFilterDialog(bookContainer)
         }
-        this.#colorsFilterDialog.showModal()
+        this._colorsFilterDialog.showModal()
     }
 
     openSearchDialog() {
-        if (!this.#searchDialog) {
-            this.#searchDialog = searchDialog(
+        if (!this._searchDialog) {
+            this._searchDialog = searchDialog(
                 this.boundDoSearch,
                 this.boundPrevMatch,
                 this.boundNextMatch,
                 this.boundSearchCleanUp,
                 this.container
             )
-            this.#searchDialog.id = 'simebv-search-dialog'
-            this.#rootDiv.append(this.#searchDialog)
+            this._searchDialog.id = 'simebv-search-dialog'
+            this._rootDiv.append(this._searchDialog)
         }
-        this.#searchDialog.show()
-        this.#searchDialog.classList.add('simebv-show')
+        this._searchDialog.show()
+        this._searchDialog.classList.add('simebv-show')
     }
 
     async doSearch(str) {
-        if (this.#currentSearch && this.#currentSearchQuery === str) {
+        if (this._currentSearch && this._currentSearchQuery === str) {
             await this.nextMatch()
             return
         }
         this.searchCleanUp()
-        this.#currentSearchQuery = str
-        this.#currentSearch = await this.view?.search({query: str})
+        this._currentSearchQuery = str
+        this._currentSearch = await this.view?.search({query: str})
         await this.nextMatch()
     }
     boundDoSearch = this.doSearch.bind(this)
 
     async nextMatch() {
-        if (!this.#currentSearch) {
+        if (!this._currentSearch) {
             return
         }
-        if (this.#currentSearchResult
-                && this.#currentSearchResult.length > 0
-                && this.#currentSearchResultIndex < this.#currentSearchResult.length - 1
+        if (this._currentSearchResult
+                && this._currentSearchResult.length > 0
+                && this._currentSearchResultIndex < this._currentSearchResult.length - 1
         ) {
-            this.#currentSearchResultIndex++
-            await this.view.goTo(this.#currentSearchResult[this.#currentSearchResultIndex].cfi)
+            this._currentSearchResultIndex++
+            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
             return
         }
-        let result = await this.#currentSearch.next()
+        let result = await this._currentSearch.next()
         if (result.value === 'done' || result.done === true) {
             return
         }
         if (result.value?.subitems) {
-            this.#currentSearchResult.push(...result.value.subitems)
-            this.#currentSearchResultIndex++
-            await this.view.goTo(this.#currentSearchResult[this.#currentSearchResultIndex].cfi)
+            this._currentSearchResult.push(...result.value.subitems)
+            this._currentSearchResultIndex++
+            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
             return
         }
         else {
@@ -499,24 +498,24 @@ export class Reader {
     boundNextMatch = this.nextMatch.bind(this)
 
     async prevMatch() {
-        if (!this.#currentSearch) {
+        if (!this._currentSearch) {
             return
         }
-        if (this.#currentSearchResult
-                && this.#currentSearchResult.length > 0
-                && this.#currentSearchResultIndex > 0
+        if (this._currentSearchResult
+                && this._currentSearchResult.length > 0
+                && this._currentSearchResultIndex > 0
         ) {
-            this.#currentSearchResultIndex--
-            await this.view.goTo(this.#currentSearchResult[this.#currentSearchResultIndex].cfi)
+            this._currentSearchResultIndex--
+            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
             return
         }
     }
     boundPrevMatch = this.prevMatch.bind(this)
 
     async searchCleanUp() {
-        this.#currentSearch = undefined
-        this.#currentSearchResult = []
-        this.#currentSearchResultIndex = -1
+        this._currentSearch = undefined
+        this._currentSearchResult = []
+        this._currentSearchResultIndex = -1
         this.view.clearSearch()
         this.view.deselect()
     }
@@ -524,10 +523,10 @@ export class Reader {
 
     async open(file) {
         this.view = document.createElement('foliate-view')
-        this.#bookContainer.append(this.view)
+        this._bookContainer.append(this.view)
         await this.view.open(file)
         if (this.view.isFixedLayout) {
-            this.#bookContainer.classList.add('simebv-fxd-layout')
+            this._bookContainer.classList.add('simebv-fxd-layout')
             this.menu.groups.layout.visible(false)
             this.menu.groups.maxPages.visible(false)
             this.menu.groups.fontSize.visible(false)
@@ -537,7 +536,7 @@ export class Reader {
             this.menu.groups.zoom.element.parentNode.parentNode.append(this.menu.groups.zoom.element.parentNode)
         }
         else {
-            this.#bookContainer.classList.remove('simebv-fxd-layout')
+            this._bookContainer.classList.remove('simebv-fxd-layout')
             this.menu.groups.layout.visible(true)
             this.menu.groups.fontSize.visible(true)
             this.menu.groups.maxPages.visible(true)
@@ -546,11 +545,11 @@ export class Reader {
             // Ensure that the last element of the menu is visible (cosmetic hack)
             this.menu.groups.colorFilter.element.parentNode.parentNode.append(this.menu.groups.colorFilter.element.parentNode)
         }
-        this.view.addEventListener('load', this.#onLoad.bind(this))
-        this.view.addEventListener('relocate', this.#onRelocate.bind(this))
-        this.view.addEventListener('relocate', () => this.#canSavePreferences = true, { once: true })
-        this.view.history.addEventListener('index-change', this.#updateHistoryMenuItems.bind(this))
-        this.#lastReadPage = this.getLastReadPage()
+        this.view.addEventListener('load', this._onLoad.bind(this))
+        this.view.addEventListener('relocate', this._onRelocate.bind(this))
+        this.view.addEventListener('relocate', () => this._canSavePreferences = true, { once: true })
+        this.view.history.addEventListener('index-change', this._updateHistoryMenuItems.bind(this))
+        this._lastReadPage = this._getLastReadPage()
 
         const { book } = this.view
         book.transformTarget?.addEventListener('data', ({ detail }) => {
@@ -574,55 +573,55 @@ export class Reader {
                 })
         })
 
-        if (this.#lastReadPage != null) {
+        if (this._lastReadPage != null) {
             try {
-                if (typeof this.#lastReadPage === 'string') {
-                    await this.view.init({lastLocation: this.#lastReadPage})
+                if (typeof this._lastReadPage === 'string') {
+                    await this.view.init({lastLocation: this._lastReadPage})
                 }
-                else if (this.#lastReadPage <= 1 && this.#lastReadPage >= 0) {
-                    await this.view.init({lastLocation: { fraction: this.#lastReadPage }})
+                else if (this._lastReadPage <= 1 && this._lastReadPage >= 0) {
+                    await this.view.init({lastLocation: { fraction: this._lastReadPage }})
                 }
             }
             catch (e) {
-                this.#lastReadPage = null
+                this._lastReadPage = null
                 console.error('Cannot load last read page:', e)
             }
         }
 
         this.view.renderer.setStyles?.(getCSS(this.style))
-        if (!this.#lastReadPage) this.view.renderer.next()
+        if (!this._lastReadPage) this.view.renderer.next()
 
-        this.#root.querySelector('#simebv-header-bar').style.visibility = 'visible'
-        this.#root.querySelector('#simebv-nav-bar').style.visibility = 'visible'
-        this.#root.querySelector('#simebv-left-button').addEventListener('click', () => this.view.goLeft())
-        this.#root.querySelector('#simebv-right-button').addEventListener('click', () => this.view.goRight())
+        this._root.querySelector('#simebv-header-bar').style.visibility = 'visible'
+        this._root.querySelector('#simebv-nav-bar').style.visibility = 'visible'
+        this._root.querySelector('#simebv-left-button').addEventListener('click', () => this.view.goLeft())
+        this._root.querySelector('#simebv-right-button').addEventListener('click', () => this.view.goRight())
 
-        const slider = this.#root.querySelector('#simebv-progress-slider')
+        const slider = this._root.querySelector('#simebv-progress-slider')
         slider.dir = book.dir
         slider.addEventListener('input', e =>
             this.view.goToFraction(parseFloat(e.target.value)))
         for (const fraction of this.view.getSectionFractions()) {
             const option = document.createElement('option')
             option.value = fraction
-            this.#root.querySelector('#simebv-tick-marks').append(option)
+            this._root.querySelector('#simebv-tick-marks').append(option)
         }
 
-        this.container.addEventListener('keydown', this.#handleKeydown.bind(this))
+        this.container.addEventListener('keydown', this._handleKeydown.bind(this))
         const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
         document.title = title
-        this.#root.querySelector('#simebv-book-header').innerText = title
-        this.#root.querySelector('#simebv-side-bar-title').innerText = title
-        this.#root.querySelector('#simebv-side-bar-author').innerText = formatContributor(book.metadata?.author)
+        this._root.querySelector('#simebv-book-header').innerText = title
+        this._root.querySelector('#simebv-side-bar-title').innerText = title
+        this._root.querySelector('#simebv-side-bar-author').innerText = formatContributor(book.metadata?.author)
         Promise.resolve(book.getCover?.())?.then(blob =>
-            blob ? this.#root.querySelector('#simebv-side-bar-cover').src = URL.createObjectURL(blob) : null)
+            blob ? this._root.querySelector('#simebv-side-bar-cover').src = URL.createObjectURL(blob) : null)
 
         const toc = book.toc
         if (toc) {
-            this.#tocView = createTOCView(toc, href => {
+            this._tocView = createTOCView(toc, href => {
                 this.view.goTo(href).catch(e => console.error(e))
-                this.closeMenus()
+                this._closeMenus()
             })
-            this.#root.querySelector('#simebv-toc-view').append(this.#tocView.element)
+            this._root.querySelector('#simebv-toc-view').append(this._tocView.element)
         }
 
         // load and show highlights embedded in the file by Calibre
@@ -673,26 +672,26 @@ export class Reader {
             }
         })
 
-        this.#loadMenuPreferences([
+        this._loadMenuPreferences([
             ['colors', 'auto'],
         ])
         if (this.view.isFixedLayout) {
-            this.#loadMenuPreferences([
+            this._loadMenuPreferences([
                 ['zoom', 'fit-page']
             ])
         }
         else {
-            this.#loadMenuPreferences([
+            this._loadMenuPreferences([
                 ['maxPages', 2],
                 ['margins', '8%'],
                 ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
             ])
         }
-        this.#loadFilterPreferences()
-        this.createFilterDialog(this.#rootDiv, this.view.isFixedLayout)
+        this._loadFilterPreferences()
+        this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
     }
 
-    #updateHistoryMenuItems() {
+    _updateHistoryMenuItems() {
         this.view?.history?.canGoBack
             ? this.menu.groups.history.items.previous.enable(true)
             : this.menu.groups.history.items.previous.enable(false)
@@ -701,7 +700,7 @@ export class Reader {
             : this.menu.groups.history.items.next.enable(false)
     }
 
-    #toggleFullScreen() {
+    _toggleFullScreen() {
         if (this.view && this.view.requestFullscreen) {
             if (document.fullscreenElement) {
                 document.exitFullscreen();
@@ -712,24 +711,24 @@ export class Reader {
         }
     }
 
-    #toggleFullViewport() {
+    _toggleFullViewport() {
         if (this.container.classList.contains('simebv-view-fullscreen')) {
             this.container.classList.remove('simebv-view-fullscreen')
-            this.#fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.remove('simebv-icon-hidden')
-            this.#fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.add('simebv-icon-hidden')
+            this._fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.remove('simebv-icon-hidden')
+            this._fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.add('simebv-icon-hidden')
         }
         else {
             this.container.classList.add('simebv-view-fullscreen')
-            this.#fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.add('simebv-icon-hidden')
-            this.#fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.remove('simebv-icon-hidden')
+            this._fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.add('simebv-icon-hidden')
+            this._fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.remove('simebv-icon-hidden')
         }
         if (this.menu) {
             this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
         }
     }
 
-    #handleKeydown(e) {
-        if (this.#colorsFilterDialog.open) {
+    _handleKeydown(e) {
+        if (this._colorsFilterDialog.open) {
             return
         }
         const k = e.key
@@ -750,15 +749,15 @@ export class Reader {
                 break
             case 'Tab':
                 if (this.menu.element.classList.contains('simebv-show')
-                        || this.#root.querySelector('#simebv-side-bar')?.classList.contains('simebv-show')) {
-                    this.closeMenus()
+                        || this._root.querySelector('#simebv-side-bar')?.classList.contains('simebv-show')) {
+                    this._closeMenus()
                 }
                 break
             case 'Escape':
                 if (this.menu.element.classList.contains('simebv-show')
-                        || this.#root.querySelector('#simebv-side-bar')?.classList.contains('simebv-show')
-                        || this.#searchDialog?.classList.contains('simebv-show')) {
-                    this.closeMenus()
+                        || this._root.querySelector('#simebv-side-bar')?.classList.contains('simebv-show')
+                        || this._searchDialog?.classList.contains('simebv-show')) {
+                    this._closeMenus()
                 }
                 else if (this.container.classList.contains('simebv-view-fullscreen')) {
                     this.container.classList.remove('simebv-view-fullscreen')
@@ -773,12 +772,12 @@ export class Reader {
         }
     }
 
-    #onLoad({ detail: { doc } }) {
-        const loadingOverlay = this.#root.getElementById('simebv-loading-overlay');
+    _onLoad({ detail: { doc } }) {
+        const loadingOverlay = this._root.getElementById('simebv-loading-overlay');
         if (loadingOverlay) {
             loadingOverlay.classList.remove('simebv-show');
         }
-        doc.addEventListener('keydown', this.#handleKeydown.bind(this))
+        doc.addEventListener('keydown', this._handleKeydown.bind(this))
         if (this.view.isFixedLayout) {
             doc.addEventListener('dblclick', () => {
                 if (['fit-page', 'fit-width'].includes(this.menu.groups.zoom.current())) {
@@ -791,9 +790,9 @@ export class Reader {
         }
     }
 
-    #onRelocate({ detail }) {
+    _onRelocate({ detail }) {
         const { fraction, location, tocItem, pageItem } = detail
-        this.#savePreference(
+        this._savePreference(
             (this.getBookIdentifier() ?? this.getCurrentTitle()) + '_LastPage', detail.cfi ?? fraction
         )
         const percent = percentFormat.format(fraction)
@@ -806,13 +805,13 @@ export class Reader {
                 /* translators: Loc: contraction for 'Location' in the book, followed by a numerical fraction */
                 __('Loc %1$s/%2$s', 'simple-ebook-viewer'), location.current, location.total
             )
-        const slider = this.#root.querySelector('#simebv-progress-slider')
+        const slider = this._root.querySelector('#simebv-progress-slider')
         slider.style.visibility = 'visible'
         slider.value = fraction
         slider.title = `${percent} · ${loc}`
-        const writtenPercent = this.#root.querySelector('#simebv-progress-percent')
+        const writtenPercent = this._root.querySelector('#simebv-progress-percent')
         writtenPercent.innerText = percent
-        if (tocItem?.href) this.#tocView?.setCurrentHref?.(tocItem.href)
+        if (tocItem?.href) this._tocView?.setCurrentHref?.(tocItem.href)
     }
 
     getBookIdentifier() {
@@ -823,56 +822,56 @@ export class Reader {
         return formatLanguageMap(this.view?.book?.metadata?.title) || 'Untitled Book'
     }
 
-    getLastReadPage() {
+    _getLastReadPage() {
         const iden = this.getBookIdentifier() ?? this.getCurrentTitle()
-        return this.#loadPreference(iden + '_LastPage')
+        return this._loadPreference(iden + '_LastPage')
     }
 
-    #savePreferences(prefs) {
-        if (!storageAvailable('localStorage') || !this.#canSavePreferences) {
+    _savePreferences(prefs) {
+        if (!storageAvailable('localStorage') || !this._canSavePreferences) {
             return
         }
         for (const [name, value] of prefs) {
-            this.#savePreference(name, value)
+            this._savePreference(name, value)
         }
     }
 
-    #loadFilterPreferences() {
-        if (!this.#appliedFilter) {
+    _loadFilterPreferences() {
+        if (!this._appliedFilter) {
             return
         }
-        for (const prop in this.#appliedFilter) {
+        for (const prop in this._appliedFilter) {
             let value = this.container.getAttribute('data-simebv-' + prop.toLowerCase())
-            value = Reader.#convertUserSettings(prop, value)
+            value = Reader._convertUserSettings(prop, value)
             if (value != null) {
-                this.#appliedFilter[prop] = value
+                this._appliedFilter[prop] = value
             }
         }
         if (storageAvailable('localStorage')) {
-            for (const prop in this.#appliedFilter) {
+            for (const prop in this._appliedFilter) {
                 let value = JSON.parse(localStorage.getItem('simebv-' + prop))
                 if (value != null) {
-                    this.#appliedFilter[prop] = value
+                    this._appliedFilter[prop] = value
                 }
             }
         }
     }
 
-    #savePreference(name, value) {
-        if (!storageAvailable('localStorage') || !this.#canSavePreferences) {
+    _savePreference(name, value) {
+        if (!storageAvailable('localStorage') || !this._canSavePreferences) {
             return
         }
         localStorage.setItem('simebv-' + name, JSON.stringify(value))
     }
 
-    #loadPreference(name) {
+    _loadPreference(name) {
         if (!storageAvailable('localStorage')) {
             return
         }
         return JSON.parse(localStorage.getItem('simebv-' + name))
     }
 
-    static #convertUserSettings(name, value) {
+    static _convertUserSettings(name, value) {
         const converter = {
             colors: {
                 sepia: 'simebv-sepia',
@@ -905,7 +904,7 @@ export class Reader {
         return converter[name.toLowerCase()]?.[value] ?? value
     }
 
-    #loadMenuPreferences(values) {
+    _loadMenuPreferences(values) {
         if (!this.menu) {
             return
         }
@@ -913,7 +912,7 @@ export class Reader {
         const defValues = values.map((item) => {
             const [name, _] = item
             let attrVal = this.container.getAttribute('data-simebv-' + name.toLowerCase())
-            attrVal = Reader.#convertUserSettings(name, attrVal)
+            attrVal = Reader._convertUserSettings(name, attrVal)
             if (attrVal && this.menu.groups[name].validate(attrVal)) {
                 return [name, attrVal]
             }
@@ -929,7 +928,7 @@ export class Reader {
         // Retrieve data from localStorage, validate it and select it on the menu, otherwise use default
         for (const [name, defVal] of defValues) {
             if (name === 'zoom') {
-                const savedCustomZoom = this.#loadPreference('custom-zoom')
+                const savedCustomZoom = this._loadPreference('custom-zoom')
                 if (this.menu.groups.zoom.validate(savedCustomZoom)) {
                     // this will not trigger the change event
                     this.menu.element.querySelector('#simebv-zoom-numeric').value = savedCustomZoom
