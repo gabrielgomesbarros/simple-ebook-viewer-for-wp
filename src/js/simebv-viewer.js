@@ -1,10 +1,11 @@
 import '../../vendor/foliate-js/view.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
-import { createMenu } from '../../vendor/foliate-js/ui/menu.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric } from './simebv-utils.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
+import { Menu } from './simebv-menu.js'
+import { createMenuItemsStd } from './simebv-menu-items.js'
 const { __, _x, _n, sprintf } = wp.i18n;
 
 // Import css for the Viewer's container element, as static asset
@@ -12,7 +13,7 @@ import '../css/simebv-container.css'
 // Import css for the Viewer's UI, as string
 import viewerUiCss from '../css/simebv-viewer.css?raw'
 // CSS to inject in iframe of reflowable ebooks
-const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor }) => `
+export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor }) => `
     @namespace epub "http://www.idpf.org/2007/ops";
     :root {
         color-scheme: ${colorScheme} !important;
@@ -125,7 +126,7 @@ export class Reader {
         }
         this._overlay.classList.remove('simebv-show')
         this._sideBar.classList.remove('simebv-show')
-        this.menu.element.hide()
+        this.menu.hide()
         if (focusTo) {
             focusTo.focus()
         }
@@ -164,231 +165,7 @@ export class Reader {
             }
         })
 
-        this.menu = createMenu([
-            {
-                name: 'search',
-                label: __('Search...', 'simple-ebook-viewer'),
-                shortcut: 'Ctrl+F',
-                type: 'action',
-                onclick: () => this.openSearchDialog(),
-                attrs: [
-                    ['aria-haspopup', 'dialog'],
-                ],
-            },
-            {
-                name: 'history',
-                label: __('History', 'simple-ebook-viewer'),
-                type: 'group',
-                items: [
-                    {
-                        name: 'previous',
-                        label: __('Previous', 'simple-ebook-viewer'),
-                        classList: ['simebv-action-menu-item'],
-                        onclick: () => {
-                            this.view?.history?.back()
-                        }
-                    },
-                    {
-                        name: 'next',
-                        label: __('Next', 'simple-ebook-viewer'),
-                        classList: ['simebv-action-menu-item'],
-                        onclick: () => {
-                            this.view?.history?.forward()
-                        }
-                    }
-                ]
-            },
-            {
-                name: 'layout',
-                label: __('Layout', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    [__('Paginated', 'simple-ebook-viewer'), 'paginated'],
-                    [__('Scrolled', 'simple-ebook-viewer'), 'scrolled'],
-                ],
-                onclick: value => {
-                    if (value === 'scrolled') {
-                        this.menu.groups.maxPages.enable(false)
-                        this.menu.groups.margins.enable(false)
-                    }
-                    else {
-                        this.menu.groups.maxPages.enable(true)
-                        this.menu.groups.margins.enable(true)
-                    }
-                    this.view?.renderer.setAttribute('flow', value)
-                    this._savePreference('layout', value)
-                },
-                horizontal: false,
-            },
-            {
-                name: 'maxPages',
-                label: __('Max pages per view', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    ['1', 1], ['2', 2], ['3', 3], ['4', 4],
-                ],
-                onclick: value => {
-                    this.view?.renderer.setAttribute('max-column-count', value)
-                    this._savePreference('maxPages', value)
-                },
-                horizontal: true,
-            },
-            {
-                name: 'fontSize',
-                label: __('Font Size', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    [_x('Small', 'Font Size', 'simple-ebook-viewer'), 14],
-                    [_x('Medium', 'Font Size', 'simple-ebook-viewer'), 18],
-                    [_x('Large', 'Font Size', 'simple-ebook-viewer'), 22],
-                    [_x('X-Large', 'Font Size', 'simple-ebook-viewer'), 26],
-                ],
-                onclick: value => {
-                    this.style.fontSize = value
-                    this.view?.renderer.setStyles?.(getCSS(this.style))
-                    this._savePreference('fontSize', value)
-                },
-                horizontal: false,
-            },
-            {
-                name: 'margins',
-                label: __('Page Margins', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    [_x('Small', 'Margins', 'simple-ebook-viewer'), '4%'],
-                    [_x('Medium', 'Margins', 'simple-ebook-viewer'), '8%'],
-                    [_x('Large', 'Margins', 'simple-ebook-viewer'), '12%'],
-                ],
-                onclick: value => {
-                    this.view?.renderer.setAttribute('gap', value)
-                    this.view?.renderer.setAttribute('max-block-size', `calc(100% - ${value.slice(0, -1) * 2}%)`)
-                    this._savePreference('margins', value)
-                },
-                horizontal: false,
-            },
-            {
-                name: 'colors',
-                label: __('Colors', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    [_x('Auto', 'Theme color', 'simple-ebook-viewer'), 'auto'],
-                    [_x('Sepia', 'Theme color', 'simple-ebook-viewer'), 'simebv-sepia'],
-                    [_x('Light', 'Theme color', 'simple-ebook-viewer'), 'simebv-light'],
-                    [_x('Dark', 'Theme color', 'simple-ebook-viewer'), 'simebv-dark'],
-                ],
-                onclick: value => {
-                    switch (value) {
-                        case 'simebv-sepia':
-                            this._rootDiv.classList.add(value)
-                            this._rootDiv.classList.remove(
-                                'simebv-supports-dark', 'simebv-light', 'simebv-dark'
-                            )
-                            this.style.colorScheme = 'only light'
-                            this.style.bgColor = '#f9f1cc'
-                            this.view?.renderer.setStyles?.(getCSS(this.style))
-                            break
-                        case 'simebv-light':
-                            this._rootDiv.classList.add(value)
-                            this._rootDiv.classList.remove(
-                                'simebv-supports-dark', 'simebv-sepia', 'simebv-dark'
-                            )
-                            this.style.colorScheme = 'only light'
-                            this.style.bgColor = '#ffffff'
-                            this.view?.renderer.setStyles?.(getCSS(this.style))
-                            break
-                        case 'simebv-dark':
-                            this._rootDiv.classList.add(value)
-                            this._rootDiv.classList.remove(
-                                'simebv-supports-dark', 'simebv-sepia', 'simebv-light'
-                            )
-                            this.style.colorScheme = 'only dark'
-                            this.style.bgColor = '#090909'
-                                this.view?.renderer.setStyles?.(getCSS(this.style))
-                            break
-                        case 'auto':
-                        default:
-                            this._rootDiv.classList.add('simebv-supports-dark')
-                            this._rootDiv.classList.remove(
-                                'simebv-sepia', 'simebv-light', 'simebv-dark'
-                            )
-                            this.style.colorScheme = 'light dark'
-                            this.style.bgColor = 'transparent'
-                            this.view?.renderer.setStyles?.(getCSS(this.style))
-                    }
-                    this._savePreference('colors', value)
-                },
-                horizontal: false,
-            },
-            {
-                name: 'colorFilter',
-                label: __('Color filter...', 'simple-ebook-viewer'),
-                type: 'action',
-                onclick: () => this.openFilterDialog(this._bookContainer),
-                attrs: [
-                    ['aria-haspopup', 'dialog'],
-                ],
-            },
-            {
-                name: 'zoom',
-                label: __('Zoom', 'simple-ebook-viewer'),
-                type: 'radio',
-                items: [
-                    [__('Fit page', 'simple-ebook-viewer'), 'fit-page'],
-                    [__('Fit width', 'simple-ebook-viewer'), 'fit-width'],
-                    [__('Custom', 'simple-ebook-viewer'), {
-                        val: 'custom',
-                        type: 'number',
-                        attrs: {
-                            id: 'simebv-zoom-numeric',
-                            max: 400,
-                            min: 10,
-                            step: 10,
-                            value: 100,
-                        },
-                        onchange: () => {
-                            this.menu.groups.zoom.select('custom')
-                        },
-                        suffix: '%',
-                        prefix: '',
-                        labelID: 'simebv-zoom-label',
-                    }],
-                ],
-                onclick: (value) => {
-                    switch (value) {
-                        case 'fit-page':
-                        case 'fit-width':
-                            this.view?.renderer?.setAttribute('zoom', value)
-                            this._savePreference('zoom', value)
-                            break
-                        case 'custom':
-                            let val = this._root.getElementById('simebv-zoom-numeric').value
-                            if (!isNumeric(val) || val < 10 || val > 400 ) {
-                                val = 100
-                            }
-                            this.view?.renderer?.setAttribute('zoom', val / 100)
-                            this._savePreference('custom-zoom', val)
-                            this._savePreference('zoom', value)
-                            break
-                        default:
-                            if (!isNumeric(value)) {
-                                break
-                            }
-                            value = Number(value)
-                            if (value >= 10 && value <= 400) {
-                                const inputElem = this._root.getElementById('simebv-zoom-numeric')
-                                inputElem.value = value
-                                inputElem.dispatchEvent(new Event('change'))
-                            }
-                    }
-                },
-                onvalidate: (value) => {
-                    return (
-                        ['fit-page', 'fit-width', 'custom'].includes(value)
-                        || (isNumeric(value) && Number(value) >= 10 && Number(value) <= 400)
-                    )
-                }
-            }
-        ])
+        this.menu = new Menu()
         this.menu.element.classList.add('simebv-menu')
         this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
         if (screen?.orientation) {
@@ -396,23 +173,17 @@ export class Reader {
                 this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
             })
         }
-        this.menu.element.addEventListener('click', (e) => e.stopPropagation())
 
         this._menuButton.append(this.menu.element)
         this._menuButton.querySelector('button').addEventListener('click', (e) => {
             if (!this.menu.element.classList.contains('simebv-show')) {
-                this.menu.element.show(this._menuButton.querySelector('button'))
+                this.menu.show(this._menuButton.querySelector('button'))
                 this._overlay.classList.add('simebv-show')
             }
             else {
                 this._closeMenus()
             }
         })
-        this._loadMenuPreferences([
-            ['fontSize', 18],
-        ])
-        this.menu.groups.history.items.previous.enable(false)
-        this.menu.groups.history.items.next.enable(false)
 
         this._fullscreenButton.addEventListener('click', this._toggleFullViewport.bind(this))
     }
@@ -521,29 +292,45 @@ export class Reader {
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
-    async open(file) {
+    _populateMenu(customMenuItems) {
+        if (customMenuItems) {
+            this.menu.addMenuItems(customMenuItems)
+            return
+        }
+        const menuItems = createMenuItemsStd(this, getCSS)
+        if (this.view.isFixedLayout) {
+            this.menu.addMenuItems([
+                menuItems.get('search'),
+                menuItems.get('history'),
+                menuItems.get('colors'),
+                menuItems.get('colorFilter'),
+                menuItems.get('zoom'),
+            ])
+        }
+        else {
+            this.menu.addMenuItems([
+                menuItems.get('search'),
+                menuItems.get('history'),
+                menuItems.get('layout'),
+                menuItems.get('maxPages'),
+                menuItems.get('fontSize'),
+                menuItems.get('margins'),
+                menuItems.get('colors'),
+                menuItems.get('colorFilter'),
+            ])
+        }
+    }
+
+    async open(file, { customMenuItems } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         await this.view.open(file)
+        this._populateMenu(customMenuItems)
         if (this.view.isFixedLayout) {
             this._bookContainer.classList.add('simebv-fxd-layout')
-            this.menu.groups.layout.visible(false)
-            this.menu.groups.maxPages.visible(false)
-            this.menu.groups.fontSize.visible(false)
-            this.menu.groups.margins.visible(false)
-            this.menu.groups.zoom.visible(true)
-            // Ensure that the last element of the menu is visible (cosmetic hack)
-            this.menu.groups.zoom.element.parentNode.parentNode.append(this.menu.groups.zoom.element.parentNode)
         }
         else {
             this._bookContainer.classList.remove('simebv-fxd-layout')
-            this.menu.groups.layout.visible(true)
-            this.menu.groups.fontSize.visible(true)
-            this.menu.groups.maxPages.visible(true)
-            this.menu.groups.margins.visible(true)
-            this.menu.groups.zoom.visible(false)
-            // Ensure that the last element of the menu is visible (cosmetic hack)
-            this.menu.groups.colorFilter.element.parentNode.parentNode.append(this.menu.groups.colorFilter.element.parentNode)
         }
         this.view.addEventListener('load', this._onLoad.bind(this))
         this.view.addEventListener('relocate', this._onRelocate.bind(this))
@@ -672,6 +459,8 @@ export class Reader {
             }
         })
 
+        this.menu.groups.history?.items.previous.enable(false)
+        this.menu.groups.history?.items.next.enable(false)
         this._loadMenuPreferences([
             ['colors', 'auto'],
         ])
@@ -682,6 +471,7 @@ export class Reader {
         }
         else {
             this._loadMenuPreferences([
+                ['fontSize', 18],
                 ['maxPages', 2],
                 ['margins', '8%'],
                 ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
@@ -693,11 +483,11 @@ export class Reader {
 
     _updateHistoryMenuItems() {
         this.view?.history?.canGoBack
-            ? this.menu.groups.history.items.previous.enable(true)
-            : this.menu.groups.history.items.previous.enable(false)
+            ? this.menu.groups.history?.items.previous.enable(true)
+            : this.menu.groups.history?.items.previous.enable(false)
         this.view?.history?.canGoForward
-            ? this.menu.groups.history.items.next.enable(true)
-            : this.menu.groups.history.items.next.enable(false)
+            ? this.menu.groups.history?.items.next.enable(true)
+            : this.menu.groups.history?.items.next.enable(false)
     }
 
     _toggleFullScreen() {
@@ -780,11 +570,11 @@ export class Reader {
         doc.addEventListener('keydown', this._handleKeydown.bind(this))
         if (this.view.isFixedLayout) {
             doc.addEventListener('dblclick', () => {
-                if (['fit-page', 'fit-width'].includes(this.menu.groups.zoom.current())) {
-                    this.menu.groups.zoom.select('custom')
+                if (['fit-page', 'fit-width'].includes(this.menu.groups.zoom?.current())) {
+                    this.menu.groups.zoom?.select('custom')
                 }
                 else {
-                    this.menu.groups.zoom.select('fit-page')
+                    this.menu.groups.zoom?.select('fit-page')
                 }
             })
         }
@@ -913,7 +703,7 @@ export class Reader {
             const [name, _] = item
             let attrVal = this.container.getAttribute('data-simebv-' + name.toLowerCase())
             attrVal = Reader._convertUserSettings(name, attrVal)
-            if (attrVal && this.menu.groups[name].validate(attrVal)) {
+            if (attrVal && this.menu.groups[name]?.validate(attrVal)) {
                 return [name, attrVal]
             }
             return item
@@ -921,7 +711,7 @@ export class Reader {
         // if there is no localStorage available, select default values on the menu
         if (!storageAvailable('localStorage')) {
             for (const [name, defVal] of defValues) {
-                this.menu.groups[name].select(defVal)
+                this.menu.groups[name]?.select(defVal)
             }
             return
         }
@@ -929,16 +719,16 @@ export class Reader {
         for (const [name, defVal] of defValues) {
             if (name === 'zoom') {
                 const savedCustomZoom = this._loadPreference('custom-zoom')
-                if (this.menu.groups.zoom.validate(savedCustomZoom)) {
+                if (this.menu.groups.zoom?.validate(savedCustomZoom)) {
                     // this will not trigger the change event
                     this.menu.element.querySelector('#simebv-zoom-numeric').value = savedCustomZoom
                 }
             }
             let savedVal = JSON.parse(localStorage.getItem('simebv-' + name))
-            this.menu.groups[name].validate(savedVal)
+            this.menu.groups[name]?.validate(savedVal)
                 ? this.menu.groups[name].select(savedVal)
                 : (
-                    this.menu.groups[name].select(defVal),
+                    this.menu.groups[name]?.select(defVal),
                     console.warn(`Invalid value for menu ${name}: ${savedVal}, setting default: ${defVal}`)
                 )
         }
