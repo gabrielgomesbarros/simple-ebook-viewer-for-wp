@@ -121,6 +121,7 @@ export class Reader {
     annotationsByValue = new Map()
     container
     menu
+    _ebookTitle
 
     _closeMenus() {
         let focusTo
@@ -338,7 +339,7 @@ export class Reader {
         }
     }
 
-    async open(fileUrl, { menuItems, initialMenuStatus } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
@@ -409,10 +410,13 @@ export class Reader {
         })
 
         this.container.addEventListener('keydown', this._handleKeydown.bind(this))
-        const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
-        document.title = title
-        this._root.querySelector('#simebv-book-header').innerText = title
-        this._root.querySelector('#simebv-side-bar-title').innerText = title
+        if (!ebookTitle) {
+            ebookTitle = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
+        }
+        this._ebookTitle = ebookTitle
+        document.title = ebookTitle
+        this._root.querySelector('#simebv-book-header').innerText = ebookTitle
+        this._root.querySelector('#simebv-side-bar-title').innerText = ebookTitle
         this._root.querySelector('#simebv-side-bar-author').innerText = formatContributor(book.metadata?.author)
         Promise.resolve(book.getCover?.())?.then(blob =>
             blob ? this._root.querySelector('#simebv-side-bar-cover').src = URL.createObjectURL(blob) : null)
@@ -647,7 +651,7 @@ export class Reader {
     }
 
     getCurrentTitle() {
-        return formatLanguageMap(this.view?.book?.metadata?.title) || 'Untitled Book'
+        return this._ebookTitle
     }
 
     _getLastReadPage() {
