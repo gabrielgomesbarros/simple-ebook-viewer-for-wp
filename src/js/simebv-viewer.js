@@ -338,12 +338,12 @@ export class Reader {
         }
     }
 
-    async open(fileUrl, { customMenuItems } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
         await this.view.open(fileUrl)
-        this._populateMenu(customMenuItems)
+        this._populateMenu(menuItems)
         this.view.book.ebookFormat = await ebookFormat(file)
         if (this.view.isFixedLayout) {
             this._bookContainer.classList.add('simebv-fxd-layout')
@@ -474,27 +474,38 @@ export class Reader {
             }
         })
 
-        this.menu.groups.history?.items.previous.enable(false)
-        this.menu.groups.history?.items.next.enable(false)
-        this._loadMenuPreferences([
-            ['colors', 'auto'],
-            ['positionViewer', 'slider'],
-        ])
-        if (this.view.isFixedLayout) {
-            this._loadMenuPreferences([
-                ['zoom', 'fit-page']
-            ])
-        }
-        else {
-            this._loadMenuPreferences([
-                ['fontSize', 18],
-                ['maxPages', 2],
-                ['margins', '8%'],
-                ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
-            ])
-        }
+        this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+    }
+
+    _setInitialMenuStatus(initialMenuStatus) {
+        this.menu.groups.history?.items.previous.enable(false)
+        this.menu.groups.history?.items.next.enable(false)
+        let prefs = []
+            .concat(initialMenuStatus?.bothBefore || [])
+            .concat((this.view.isFixedLayout
+                ? initialMenuStatus?.fixedLayout
+                : initialMenuStatus?.reflowable) || [])
+            .concat(initialMenuStatus?.bothAfter || [])
+        if (prefs.length === 0) {
+            prefs = [
+                ['colors', 'auto'],
+                ['positionViewer', 'slider'],
+            ]
+            if (this.view.isFixedLayout) {
+                prefs.push(['zoom', 'fit-page'])
+            }
+            else {
+                prefs.push(
+                    ['fontSize', 18],
+                    ['maxPages', 2],
+                    ['margins', '8%'],
+                    ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
+                )
+            }
+        }
+        this._loadMenuPreferences(prefs)
     }
 
     _updateHistoryMenuItems() {
@@ -548,9 +559,11 @@ export class Reader {
                 this.view.next()
                 break
             case 'ArrowLeft':
+                e.preventDefault()
                 this.view.goLeft()
                 break
             case 'ArrowRight':
+                e.preventDefault()
                 this.view.goRight()
                 break
             case 'Tab':
