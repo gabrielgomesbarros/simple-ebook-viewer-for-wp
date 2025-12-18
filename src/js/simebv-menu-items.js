@@ -252,3 +252,23 @@ export function createMenuItemsStd(reader, injectCSS) {
         }],
     ])
 }
+
+
+export function getInitialMenuStatusStd() {
+    return {
+        bothBefore: [
+            ['colors', 'auto'],
+            ['positionViewer', 'slider'],
+        ],
+        fixedLayout: [
+            ['zoom', 'fit-page'],
+        ],
+        reflowable: [
+            ['fontSize', 18],
+            ['maxPages', 2],
+            ['margins', '8%'],
+            ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
+        ],
+        bothAfter: [],
+    }
+}

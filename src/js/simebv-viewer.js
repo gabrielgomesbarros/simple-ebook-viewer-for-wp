@@ -5,7 +5,7 @@ import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric } from './
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { Menu } from './simebv-menu.js'
-import { createMenuItemsStd } from './simebv-menu-items.js'
+import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
 import { NavBar } from './simebv-navbar.js'
 const { __, _x, _n, sprintf } = wp.i18n;
@@ -486,29 +486,14 @@ export class Reader {
     _setInitialMenuStatus(initialMenuStatus) {
         this.menu.groups.history?.items.previous.enable(false)
         this.menu.groups.history?.items.next.enable(false)
-        let prefs = []
-            .concat(initialMenuStatus?.bothBefore || [])
+        if (!initialMenuStatus) {
+            initialMenuStatus = getInitialMenuStatusStd()
+        }
+        let prefs = (initialMenuStatus?.bothBefore || [])
             .concat((this.view.isFixedLayout
                 ? initialMenuStatus?.fixedLayout
                 : initialMenuStatus?.reflowable) || [])
             .concat(initialMenuStatus?.bothAfter || [])
-        if (prefs.length === 0) {
-            prefs = [
-                ['colors', 'auto'],
-                ['positionViewer', 'slider'],
-            ]
-            if (this.view.isFixedLayout) {
-                prefs.push(['zoom', 'fit-page'])
-            }
-            else {
-                prefs.push(
-                    ['fontSize', 18],
-                    ['maxPages', 2],
-                    ['margins', '8%'],
-                    ['layout', 'paginated'],  // the 'scrolled' layout disables other preferences, so this is at the end
-                )
-            }
-        }
         this._loadMenuPreferences(prefs)
     }
 
