@@ -110,6 +110,22 @@ export function createMenuItemsStd(reader, injectCSS) {
             horizontal: false,
         }],
 
+        ['positionViewer', {
+            name: 'positionViewer',
+            label: __('Show position', 'simple-ebook-viewer'),
+            type: 'radio',
+            items: [
+                [__('Slider', 'simple-ebook-viewer'), 'slider'],
+                [__('Percentage', 'simple-ebook-viewer'), 'percent'],
+                [__('Pages', 'simple-ebook-viewer'), 'pages'],
+            ],
+            onclick: value => {
+                reader._navBar.setAttribute('position-view-type', value)
+                reader._savePreference('positionViewer', value)
+            },
+            horizontal: false,
+        }],
+
         ['colors', {
             name: 'colors',
             label: __('Colors', 'simple-ebook-viewer'),

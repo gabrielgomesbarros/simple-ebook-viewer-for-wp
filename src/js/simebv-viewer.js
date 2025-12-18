@@ -6,6 +6,8 @@ import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd } from './simebv-menu-items.js'
+import { ebookFormat } from './simebv-ebook-format.js'
+import { NavBar } from './simebv-navbar.js'
 const { __, _x, _n, sprintf } = wp.i18n;
 
 // Import css for the Viewer's container element, as static asset
@@ -85,6 +87,7 @@ export class Reader {
     _rootDiv
     _bookContainer
     _tocView
+    _navBar
     _sideBar
     _sideBarButton
     _overlay
@@ -132,18 +135,33 @@ export class Reader {
         }
     }
 
-    constructor(container) {
+    constructor(container, { menu, navBar } = {}) {
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
         this._rootDiv = this._root.querySelector('#simebv-reader-root')
-        this.setLocalizedDefaultInterface(this._root)
         this._bookContainer = this._root.querySelector('#simebv-book-container')
         this._sideBar = this._root.querySelector('#simebv-side-bar')
         this._sideBarButton = this._root.querySelector('#simebv-side-bar-button')
         this._overlay = this._root.querySelector('#simebv-dimming-overlay')
         this._menuButton = this._root.querySelector('#simebv-menu-button')
         this._fullscreenButton = this._root.querySelector('#full-screen-button')
+
+        const navBarContainer = this._root.querySelector('#simebv-nav-bar')
+        if (!navBar) {
+            navBar = document.createElement('simebv-reader-navbar')
+        }
+        navBarContainer.append(navBar)
+        this._navBar = navBar
+
+        if (!menu) {
+            menu = new Menu()
+        }
+        this.menu = menu
+        this.menu.element.classList.add('simebv-menu')
+        this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
+
+        this.setLocalizedDefaultInterface(this._root)
 
         this._sideBarButton.addEventListener('click', () => {
             this._sideBar.style.display = null;
@@ -165,9 +183,6 @@ export class Reader {
             }
         })
 
-        this.menu = new Menu()
-        this.menu.element.classList.add('simebv-menu')
-        this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
         if (screen?.orientation) {
             screen.orientation.addEventListener('change', () => {
                 this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
@@ -305,6 +320,7 @@ export class Reader {
                 menuItems.get('colors'),
                 menuItems.get('colorFilter'),
                 menuItems.get('zoom'),
+                menuItems.get('positionViewer'),
             ])
         }
         else {
@@ -317,15 +333,18 @@ export class Reader {
                 menuItems.get('margins'),
                 menuItems.get('colors'),
                 menuItems.get('colorFilter'),
+                menuItems.get('positionViewer'),
             ])
         }
     }
 
-    async open(file, { customMenuItems } = {}) {
+    async open(fileUrl, { customMenuItems } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
-        await this.view.open(file)
+        const file = await fetchFile(fileUrl)
+        await this.view.open(fileUrl)
         this._populateMenu(customMenuItems)
+        this.view.book.ebookFormat = await ebookFormat(file)
         if (this.view.isFixedLayout) {
             this._bookContainer.classList.add('simebv-fxd-layout')
         }
@@ -337,6 +356,10 @@ export class Reader {
         this.view.addEventListener('relocate', () => this._canSavePreferences = true, { once: true })
         this.view.history.addEventListener('index-change', this._updateHistoryMenuItems.bind(this))
         this._lastReadPage = this._getLastReadPage()
+        this._navBar.dispatchEvent(new CustomEvent('new-book', { detail: {
+            fractions: this.view.getSectionFractions(),
+            dir: this.view.book.dir
+        }}))
 
         const { book } = this.view
         book.transformTarget?.addEventListener('data', ({ detail }) => {
@@ -379,19 +402,11 @@ export class Reader {
         if (!this._lastReadPage) this.view.renderer.next()
 
         this._root.querySelector('#simebv-header-bar').style.visibility = 'visible'
-        this._root.querySelector('#simebv-nav-bar').style.visibility = 'visible'
-        this._root.querySelector('#simebv-left-button').addEventListener('click', () => this.view.goLeft())
-        this._root.querySelector('#simebv-right-button').addEventListener('click', () => this.view.goRight())
-
-        const slider = this._root.querySelector('#simebv-progress-slider')
-        slider.dir = book.dir
-        slider.addEventListener('input', e =>
-            this.view.goToFraction(parseFloat(e.target.value)))
-        for (const fraction of this.view.getSectionFractions()) {
-            const option = document.createElement('option')
-            option.value = fraction
-            this._root.querySelector('#simebv-tick-marks').append(option)
-        }
+        this._navBar.addEventListener('go-left', () => this.view.goLeft())
+        this._navBar.addEventListener('go-right', () => this.view.goRight())
+        this._navBar.addEventListener('changed-page-slider', ({ detail }) => {
+            this.view.goToFraction(parseFloat(detail.newLocation))
+        })
 
         this.container.addEventListener('keydown', this._handleKeydown.bind(this))
         const title = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
@@ -463,6 +478,7 @@ export class Reader {
         this.menu.groups.history?.items.next.enable(false)
         this._loadMenuPreferences([
             ['colors', 'auto'],
+            ['positionViewer', 'slider'],
         ])
         if (this.view.isFixedLayout) {
             this._loadMenuPreferences([
@@ -581,7 +597,7 @@ export class Reader {
     }
 
     _onRelocate({ detail }) {
-        const { fraction, location, tocItem, pageItem } = detail
+        const { fraction, section, location, tocItem, pageItem } = detail
         this._savePreference(
             (this.getBookIdentifier() ?? this.getCurrentTitle()) + '_LastPage', detail.cfi ?? fraction
         )
@@ -595,12 +611,21 @@ export class Reader {
                 /* translators: Loc: contraction for 'Location' in the book, followed by a numerical fraction */
                 __('Loc %1$s/%2$s', 'simple-ebook-viewer'), location.current, location.total
             )
-        const slider = this._root.querySelector('#simebv-progress-slider')
-        slider.style.visibility = 'visible'
-        slider.value = fraction
-        slider.title = `${percent} · ${loc}`
-        const writtenPercent = this._root.querySelector('#simebv-progress-percent')
-        writtenPercent.innerText = percent
+        let currentPage = location.current + 1
+        let totalPages = location.total
+        if (this.view.isFixedLayout) {
+            currentPage = section.current + 1
+            totalPages = section.total
+        }
+        const page = sprintf(
+            __('Page %1$s / %2$s', 'simple-ebook-viewer'), currentPage, totalPages
+        )
+        this._navBar.dispatchEvent(new CustomEvent('relocate', { detail: {
+            sliderValue: fraction,
+            sliderTitle: `${percent} · ${loc}`,
+            percent,
+            page,
+        }}))
         if (tocItem?.href) this._tocView?.setCurrentHref?.(tocItem.href)
     }
 
@@ -751,16 +776,6 @@ export class Reader {
         const fullScreenButtonLabel = __('Full screen', 'simple-ebook-viewer')
         fullScreenButton.setAttribute('aria-label', fullScreenButtonLabel)
         fullScreenButton.title = fullScreenButtonLabel
-
-        const leftButton = root.getElementById('simebv-left-button')
-        const leftButtonLabel = __('Go left', 'simple-ebook-viewer')
-        leftButton.setAttribute('aria-label', leftButtonLabel)
-        leftButton.title = leftButtonLabel
-
-        const rightButton = root.getElementById('simebv-right-button')
-        const rightButtonLabel = __('Go right', 'simple-ebook-viewer')
-        rightButton.setAttribute('aria-label', rightButtonLabel)
-        rightButton.title = rightButtonLabel
     }
 }
 
@@ -819,21 +834,7 @@ ${viewerUiCss}
         <div id="simebv-toc-view"></div>
     </section>
     <div id="simebv-book-container"></div>
-    <div id="simebv-nav-bar" class="simebv-toolbar">
-        <button id="simebv-left-button" aria-label="Go left">
-            <svg class="simebv-icon" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M 15 6 L 9 12 L 15 18"/>
-            </svg>
-        </button>
-        <input id="simebv-progress-slider" type="range" min="0" max="1" step="any" list="simebv-tick-marks">
-        <datalist id="simebv-tick-marks"></datalist>
-        <div id="simebv-progress-percent"></div>
-        <button id="simebv-right-button" aria-label="Go right">
-            <svg class="simebv-icon" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M 9 6 L 15 12 L 9 18"/>
-            </svg>
-        </button>
-    </div>
+    <div id="simebv-nav-bar"></div>
 </div>
 `
 
@@ -846,6 +847,18 @@ const dropHandler = e => {
         const entry = item.webkitGetAsEntry()
         open(entry.isFile ? item.getAsFile() : entry).catch(e => console.error(e))
     }
+}
+
+
+// from vendor/foliate-js/view.js
+const fetchFile = async url => {
+    const res = await fetch(url)
+    if (!res.ok) {
+        throw new Error(
+            `${res.status} ${res.statusText}`, { cause: res }
+        )
+    }
+    return new File([await res.blob()], new URL(res.url).pathname)
 }
 
 

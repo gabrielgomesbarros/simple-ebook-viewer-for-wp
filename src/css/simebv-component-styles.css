@@ -1,0 +1,44 @@
+.simebv-toolbar {
+    box-sizing: border-box;
+    position: absolute;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    width: calc(100% - 12px);
+    max-width: 100%;
+    height: var(--header-height);
+    padding: 6px;
+    transition: opacity 250ms ease;
+    visibility: hidden;
+    color: CanvasText;
+}
+.simebv-toolbar button {
+    padding: 3px;
+    border-radius: 6px;
+    background: none;
+    border: 0;
+}
+.simebv-toolbar button:hover {
+    background: var(--active-bg);
+    color: currentcolor;
+    cursor: pointer;
+}
+input, button {
+    font-family: inherit;
+    font-size: max(var(--font-size-input), 1rem);
+}
+.simebv-icon {
+    display: block;
+    fill: none;
+    stroke: CanvasText;
+    stroke-width: 1.5px;
+}
+.simebv-icon:active {
+    stroke: CanvasText;
+    transform: scale(0.95);
+}
+.simebv-icon-hidden {
+    display: none;
+}
