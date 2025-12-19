@@ -48,6 +48,26 @@ export function removeInlineScripts(data, type) {
     return data
 }
 
+export function injectMathJax(data, type, url, config) {
+    try {
+        let doc
+        typeof data === 'string'
+            ? doc = new DOMParser().parseFromString(data, type)
+            : doc = data
+        const scriptConfig = doc.createElement('script')
+        scriptConfig.textContent = config
+        const script = doc.createElement('script')
+        script.setAttribute('defer', 'true')
+        script.src = url
+        doc.head
+            ? doc.head.append(scriptConfig, script)
+            : doc.documentElement.prepend(scriptConfig, script)
+        return doc.documentElement.outerHTML
+    }
+    catch (e) { console.error(e) }
+    return data
+}
+
 export function isNumeric(v) {
     return parseFloat(v) === Number(v)
 }

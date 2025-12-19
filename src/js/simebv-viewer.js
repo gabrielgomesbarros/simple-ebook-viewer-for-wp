@@ -1,7 +1,7 @@
 import '../../vendor/foliate-js/view.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
-import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric } from './simebv-utils.js'
+import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { Menu } from './simebv-menu.js'
@@ -339,7 +339,7 @@ export class Reader {
         }
     }
 
-    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, allowJS, injectMathJaxData } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
@@ -370,10 +370,18 @@ export class Reader {
                     switch(detail.type) {
                         case 'application/xhtml+xml':
                         case 'text/html':
-                            return addCSPMeta(data, detail.type)
+                            if (!allowJS) {
+                                return addCSPMeta(data, detail.type)
+                            }
+                            if (injectMathJaxData?.url) {
+                                return injectMathJax(data, detail.type, injectMathJaxData.url, injectMathJaxData.config)
+                            }
+                            return data
                         case 'image/svg+xml':
                         case 'application/xml':
-                            return removeInlineScripts(data, detail.type)
+                            if (!allowJS) {
+                                return removeInlineScripts(data, detail.type)
+                            }
                         default:
                             return data
                     }
@@ -864,18 +872,6 @@ const fetchFile = async url => {
 }
 
 
-export const open = async (file, args, containerID) => {
-    let container = document.getElementById(containerID)
-    if (!container) {
-        container = document.createElement('section')
-        container.id = containerID
-    }
-    const reader = new Reader(container, args)
-    await reader.open(file)
-    return container
-}
-
-
 const get_ebook_url = async id => {
     await wp.api.loadPromise
     let media = new wp.api.models.Media({ id: id })
@@ -914,7 +910,22 @@ export const initializeViewer = async containerID => {
             }
         }
         if (url) {
-            open(url, undefined, containerID).catch(e => console.error(e));
+            try {
+                const reader = new Reader(ebook_path_el)
+                await reader.open(url)
+            } catch (e) {
+                const msg = document.createElement('p')
+                msg.append(
+                    __('Error while opening the book:', 'simple-ebook-viewer'),
+                    document.createElement('br'),
+                    e.message
+                )
+                ebook_path_el.shadowRoot.innerHTML = ''
+                const newRoot = document.createElement('div')
+                ebook_path_el.shadowRoot.append(newRoot)
+                show_error_msg(newRoot, msg)
+                console.error(e)
+            }
         }
     }
 }
