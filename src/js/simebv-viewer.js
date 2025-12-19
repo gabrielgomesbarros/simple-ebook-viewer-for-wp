@@ -339,7 +339,7 @@ export class Reader {
         }
     }
 
-    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, allowJS, injectMathJaxData } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, allowJS, injectMathJaxData, filterEbookContent } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
@@ -366,6 +366,7 @@ export class Reader {
         book.transformTarget?.addEventListener('data', ({ detail }) => {
             detail.data = Promise
                 .resolve(detail.data)
+                .then(data => typeof filterEbookContent === 'function' ? filterEbookContent(data) : data)
                 .then(data => {
                     switch(detail.type) {
                         case 'application/xhtml+xml':
