@@ -55,7 +55,7 @@ export class NavBar extends HTMLElement {
 
     constructor() {
         super()
-        this.attachShadow({ mode: 'open' })
+        this.attachShadow({ mode: 'open', delegatesFocus: true })
         this.shadowRoot.append(
             commonStyles.content.cloneNode(true),
             template.content.cloneNode(true)
