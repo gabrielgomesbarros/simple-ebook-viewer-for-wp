@@ -92,6 +92,7 @@ export class Reader {
     _headerBar
     _sideBar
     _overlay
+    _realFullscreen
     _colorsFilterDialog
     _searchDialog
     _currentSearch
@@ -135,7 +136,7 @@ export class Reader {
         }
     }
 
-    constructor(container, { menu, navBar, headerBar } = {}) {
+    constructor(container, { menu, navBar, headerBar, realFullscreen } = {}) {
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
@@ -143,6 +144,14 @@ export class Reader {
         this._bookContainer = this._root.querySelector('#simebv-book-container')
         this._sideBar = this._root.querySelector('#simebv-side-bar')
         this._overlay = this._root.querySelector('#simebv-dimming-overlay')
+        this._realFullscreen = realFullscreen
+
+        const headerBarContainer = this._root.querySelector('#simebv-header-bar')
+        if (!headerBar) {
+            headerBar = document.createElement('simebv-reader-header')
+        }
+        headerBarContainer.append(headerBar)
+        this._headerBar = headerBar
 
         const navBarContainer = this._root.querySelector('#simebv-nav-bar')
         if (!navBar) {
@@ -156,14 +165,8 @@ export class Reader {
         }
         this.menu = menu
         this.menu.element.classList.add('simebv-menu')
-        this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
+        this._setMenuMaxBlockSize()
 
-        const headerBarContainer = this._root.querySelector('#simebv-header-bar')
-        if (!headerBar) {
-            headerBar = document.createElement('simebv-reader-header')
-        }
-        headerBarContainer.append(headerBar)
-        this._headerBar = headerBar
 
         this._headerBar.addEventListener('side-bar-button', () => {
             this._sideBar.style.display = null;
@@ -187,7 +190,7 @@ export class Reader {
 
         if (screen?.orientation) {
             screen.orientation.addEventListener('change', () => {
-                this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
+                this._setMenuMaxBlockSize()
             })
         }
 
@@ -201,7 +204,15 @@ export class Reader {
                 this._closeMenus()
             }
         })
-        this._headerBar.addEventListener('fullscreen-button', this._toggleFullViewport.bind(this))
+        this._headerBar.addEventListener(
+            'fullscreen-button',
+            realFullscreen ? this._toggleFullScreen.bind(this) : this._toggleFullViewport.bind(this)
+        )
+        this.container.addEventListener('fullscreenchange', (e) => {
+            const detail = { data: document.fullscreenElement ? 'enter' : 'exit' }
+            this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail }))
+            this._setMenuMaxBlockSize()
+        })
 
         this.setLocalizedDefaultInterface(this._root)
     }
@@ -509,6 +520,15 @@ export class Reader {
         this._loadMenuPreferences(prefs)
     }
 
+    _setMenuMaxBlockSize() {
+        if (this.menu) {
+            const subtractY = this._headerBar
+                ? this._headerBar.root.getBoundingClientRect().bottom - this.container.getBoundingClientRect().top
+                : 62
+            this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - subtractY) + 'px)'
+        }
+    }
+
     _updateHistoryMenuItems() {
         this.view?.history?.canGoBack
             ? this.menu.groups.history?.items.previous.enable(true)
@@ -519,34 +539,32 @@ export class Reader {
     }
 
     _toggleFullScreen() {
-        if (this.view && this.view.requestFullscreen) {
+        if (this.container.requestFullscreen) {
             if (document.fullscreenElement) {
                 document.exitFullscreen()
-                    .then(res => this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail: { data: 'exit' }})))
             }
             else {
-                this.view.requestFullscreen()
-                    .then(res => this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail: { data: 'enter'}})))
+                this.container.requestFullscreen()
             }
+            this._setMenuMaxBlockSize()
+        }
+        else {
+            this._toggleFullViewport()
         }
     }
 
     _toggleFullViewport() {
+        const detail = {}
         if (this.container.classList.contains('simebv-view-fullscreen')) {
             this.container.classList.remove('simebv-view-fullscreen')
-            this._headerBar.dispatchEvent(
-                new CustomEvent('toggle-fullscreen', { detail: { data: 'exit' }})
-            )
+            detail.data = 'exit'
         }
         else {
             this.container.classList.add('simebv-view-fullscreen')
-            this._headerBar.dispatchEvent(
-                new CustomEvent('enter-fullscreen', { detail: { data: 'enter' }})
-            )
+            detail.data = 'enter'
         }
-        if (this.menu) {
-            this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
-        }
+        this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail }))
+        this._setMenuMaxBlockSize()
     }
 
     _handleKeydown(e) {
@@ -583,8 +601,11 @@ export class Reader {
                         || this._searchDialog?.classList.contains('simebv-show')) {
                     this._closeMenus()
                 }
+                else if (this._realFullscreen) {
+                    this._toggleFullScreen()
+                }
                 else if (this.container.classList.contains('simebv-view-fullscreen')) {
-                    this.container.classList.remove('simebv-view-fullscreen')
+                    this._toggleFullViewport()
                 }
                 break
             case 'f':

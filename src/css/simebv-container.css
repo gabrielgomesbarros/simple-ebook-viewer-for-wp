@@ -14,7 +14,7 @@
 
 #simebv-reader-container.simebv-view-fullscreen {
     margin: 0;
-    border: none;
+    border: none !important;
     height: 100vh !important;
     max-height: 100vh !important;
     min-height: 100vh !important;

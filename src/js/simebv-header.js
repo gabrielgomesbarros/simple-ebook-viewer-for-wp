@@ -66,6 +66,7 @@ template.innerHTML = `
     overflow: auto;
     scrollbar-width: thin;
     user-select: none;
+    box-sizing: border-box;
 }
 .simebv-menu.simebv-show {
     visibility: visible;
@@ -129,6 +130,14 @@ template.innerHTML = `
     float: right;
     float: inline-end;
     color: var(--gray-text);
+}
+#simebv-zoom-numeric {
+    inline-size: 5ch;
+    margin-inline-end: .2em;
+}
+#simebv-zoom-numeric-container {
+    white-space: pre;
+    margin-inline-start: .5em;
 }
 </style>
 <div id="header-bar" class="simebv-toolbar">
@@ -250,7 +259,7 @@ export class HeaderBar extends HTMLElement {
         const settingsButtonLabel = __('Show settings', 'simple-ebook-viewer')
         this.buttonMenu.setAttribute('aria-label', settingsButtonLabel)
         this.buttonMenu.title = settingsButtonLabel
-        const fullScreenButtonLabel = __('Full screen', 'simple-ebook-viewer')
+        const fullScreenButtonLabel = __('Toggle full screen', 'simple-ebook-viewer')
         this.buttonFullscreen.setAttribute('aria-label', fullScreenButtonLabel)
         this.buttonFullscreen.title = fullScreenButtonLabel
         const buttonCloseLabel = __('Close Reader', 'simple-ebook-viewer')
