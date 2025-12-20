@@ -8,6 +8,7 @@ import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
 import { NavBar } from './simebv-navbar.js'
+import { HeaderBar } from './simebv-header.js'
 const { __, _x, _n, sprintf } = wp.i18n;
 
 // Import css for the Viewer's container element, as static asset
@@ -88,11 +89,9 @@ export class Reader {
     _bookContainer
     _tocView
     _navBar
+    _headerBar
     _sideBar
-    _sideBarButton
     _overlay
-    _menuButton
-    _fullscreenButton
     _colorsFilterDialog
     _searchDialog
     _currentSearch
@@ -136,17 +135,14 @@ export class Reader {
         }
     }
 
-    constructor(container, { menu, navBar } = {}) {
+    constructor(container, { menu, navBar, headerBar } = {}) {
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
         this._rootDiv = this._root.querySelector('#simebv-reader-root')
         this._bookContainer = this._root.querySelector('#simebv-book-container')
         this._sideBar = this._root.querySelector('#simebv-side-bar')
-        this._sideBarButton = this._root.querySelector('#simebv-side-bar-button')
         this._overlay = this._root.querySelector('#simebv-dimming-overlay')
-        this._menuButton = this._root.querySelector('#simebv-menu-button')
-        this._fullscreenButton = this._root.querySelector('#full-screen-button')
 
         const navBarContainer = this._root.querySelector('#simebv-nav-bar')
         if (!navBar) {
@@ -162,9 +158,14 @@ export class Reader {
         this.menu.element.classList.add('simebv-menu')
         this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
 
-        this.setLocalizedDefaultInterface(this._root)
+        const headerBarContainer = this._root.querySelector('#simebv-header-bar')
+        if (!headerBar) {
+            headerBar = document.createElement('simebv-reader-header')
+        }
+        headerBarContainer.append(headerBar)
+        this._headerBar = headerBar
 
-        this._sideBarButton.addEventListener('click', () => {
+        this._headerBar.addEventListener('side-bar-button', () => {
             this._sideBar.style.display = null;
             setTimeout(() => {
                 this._overlay.classList.add('simebv-show')
@@ -190,18 +191,19 @@ export class Reader {
             })
         }
 
-        this._menuButton.append(this.menu.element)
-        this._menuButton.querySelector('button').addEventListener('click', (e) => {
+        this._headerBar.attachMenu(this.menu.element)
+        this._headerBar.addEventListener('menu-button', (e) => {
             if (!this.menu.element.classList.contains('simebv-show')) {
-                this.menu.show(this._menuButton.querySelector('button'))
+                this.menu.show(this._headerBar.buttonMenu)
                 this._overlay.classList.add('simebv-show')
             }
             else {
                 this._closeMenus()
             }
         })
+        this._headerBar.addEventListener('fullscreen-button', this._toggleFullViewport.bind(this))
 
-        this._fullscreenButton.addEventListener('click', this._toggleFullViewport.bind(this))
+        this.setLocalizedDefaultInterface(this._root)
     }
 
     get containerHeight() {
@@ -357,10 +359,11 @@ export class Reader {
         this.view.addEventListener('relocate', () => this._canSavePreferences = true, { once: true })
         this.view.history.addEventListener('index-change', this._updateHistoryMenuItems.bind(this))
         this._lastReadPage = this._getLastReadPage()
-        this._navBar.dispatchEvent(new CustomEvent('new-book', { detail: {
+        const newBookEvent = new CustomEvent('new-book', { detail: {
             fractions: this.view.getSectionFractions(),
             dir: this.view.book.dir
-        }}))
+        }})
+        this._navBar.dispatchEvent(newBookEvent)
 
         const { book } = this.view
         book.transformTarget?.addEventListener('data', ({ detail }) => {
@@ -411,7 +414,6 @@ export class Reader {
         this.view.renderer.setStyles?.(getCSS(this.style))
         if (!this._lastReadPage) this.view.renderer.next()
 
-        this._root.querySelector('#simebv-header-bar').style.visibility = 'visible'
         this._navBar.addEventListener('go-left', () => this.view.goLeft())
         this._navBar.addEventListener('go-right', () => this.view.goRight())
         this._navBar.addEventListener('changed-page-slider', ({ detail }) => {
@@ -424,7 +426,8 @@ export class Reader {
         }
         this._ebookTitle = ebookTitle
         document.title = ebookTitle
-        this._root.querySelector('#simebv-book-header').innerText = ebookTitle
+        this._headerBar.setHeader(ebookTitle)
+        this._headerBar.dispatchEvent(newBookEvent)
         this._root.querySelector('#simebv-side-bar-title').innerText = ebookTitle
         this._root.querySelector('#simebv-side-bar-author').innerText = formatContributor(book.metadata?.author)
         Promise.resolve(book.getCover?.())?.then(blob =>
@@ -518,10 +521,12 @@ export class Reader {
     _toggleFullScreen() {
         if (this.view && this.view.requestFullscreen) {
             if (document.fullscreenElement) {
-                document.exitFullscreen();
+                document.exitFullscreen()
+                    .then(res => this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail: { data: 'exit' }})))
             }
             else {
-                this.view.requestFullscreen();
+                this.view.requestFullscreen()
+                    .then(res => this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail: { data: 'enter'}})))
             }
         }
     }
@@ -529,13 +534,15 @@ export class Reader {
     _toggleFullViewport() {
         if (this.container.classList.contains('simebv-view-fullscreen')) {
             this.container.classList.remove('simebv-view-fullscreen')
-            this._fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.remove('simebv-icon-hidden')
-            this._fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.add('simebv-icon-hidden')
+            this._headerBar.dispatchEvent(
+                new CustomEvent('toggle-fullscreen', { detail: { data: 'exit' }})
+            )
         }
         else {
             this.container.classList.add('simebv-view-fullscreen')
-            this._fullscreenButton.querySelector('#simebv-icon-enter-fullscreen').classList.add('simebv-icon-hidden')
-            this._fullscreenButton.querySelector('#simebv-icon-exit-fullscreen').classList.remove('simebv-icon-hidden')
+            this._headerBar.dispatchEvent(
+                new CustomEvent('enter-fullscreen', { detail: { data: 'enter' }})
+            )
         }
         if (this.menu) {
             this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - 62) + 'px)'
@@ -772,21 +779,6 @@ export class Reader {
 
     setLocalizedDefaultInterface(root) {
         root.getElementById('simebv-loading-overlay-text').innerText = __('Loading...', 'simple-ebook-viewer')
-        const sideBarButton = root.getElementById('simebv-side-bar-button')
-        const sideBarButtonLabel = __('Show sidebar', 'simple-ebook-viewer')
-        sideBarButton.setAttribute('aria-label', sideBarButtonLabel)
-        sideBarButton.title = sideBarButtonLabel
-
-        const header = root.getElementById('simebv-book-header').innerText = __('No title', 'simple-ebook-viewer')
-        const settingsButton = root.querySelector('#simebv-menu-button button')
-        const settingsButtonLabel = __('Show settings', 'simple-ebook-viewer')
-        settingsButton.setAttribute('aria-label', settingsButtonLabel)
-        settingsButton.title = settingsButtonLabel
-
-        const fullScreenButton = root.getElementById('full-screen-button')
-        const fullScreenButtonLabel = __('Full screen', 'simple-ebook-viewer')
-        fullScreenButton.setAttribute('aria-label', fullScreenButtonLabel)
-        fullScreenButton.title = fullScreenButtonLabel
     }
 }
 
@@ -799,41 +791,7 @@ ${viewerUiCss}
         <p id="simebv-loading-overlay-text">Loading...</p>
     </div>
     <div id="simebv-dimming-overlay"></div>
-    <div id="simebv-header-bar" class="simebv-toolbar">
-        <div class="simebv-left-side-buttons">
-            <button id="simebv-side-bar-button" aria-label="Show sidebar">
-                <svg class="simebv-icon" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M 4 6 h 16 M 4 12 h 16 M 4 18 h 16"/>
-                </svg>
-            </button>
-        </div>
-        <header id="simebv-headline-container" class="simebv-reader-headline">
-            <h1 id="simebv-book-header">No title</h1>
-        </header>
-        <div class="simebv-right-side-buttons">
-            <div id="simebv-menu-button" class="simebv-menu-container">
-                <button aria-label="Show settings" aria-haspopup="true">
-                    <svg class="simebv-icon" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M5 12.7a7 7 0 0 1 0-1.4l-1.8-2 2-3.5 2.7.5a7 7 0 0 1 1.2-.7L10 3h4l.9 2.6 1.2.7 2.7-.5 2 3.4-1.8 2a7 7 0 0 1 0 1.5l1.8 2-2 3.5-2.7-.5a7 7 0 0 1-1.2.7L14 21h-4l-.9-2.6a7 7 0 0 1-1.2-.7l-2.7.5-2-3.4 1.8-2Z"/>
-                        <circle cx="12" cy="12" r="3"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="simebv-right-side-button-container">
-                <button id="full-screen-button" aria-label="Full screen">
-                    <svg width="32" height="32" viewBox="-2 -2 28 28" class="simebv-icon" id="simebv-icon-enter-fullscreen" xmlns="http://www.w3.org/2000/svg" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M8 2H4C2.89543 2 2 2.89543 2 4V8" stroke-width="1.8"/>
-                        <path d="M22 8L22 4C22 2.89543 21.1046 2 20 2H16" stroke-width="1.8"/>
-                        <path d="M16 22L20 22C21.1046 22 22 21.1046 22 20L22 16" stroke-width="1.8"/>
-                        <path d="M8 22L4 22C2.89543 22 2 21.1046 2 20V16" stroke-width="1.8"/>
-                    </svg>
-                    <svg class="simebv-icon simebv-icon-hidden" id="simebv-icon-exit-fullscreen" width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4 12 L12 12 12 4 M20 4 L20 12 28 12 M4 20 L12 20 12 28 M28 20 L20 20 20 28" stroke-width="1.8" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
+    <div id="simebv-header-bar"></div>
     <section id="simebv-side-bar">
         <div id="simebv-side-bar-header">
             <img id="simebv-side-bar-cover">
