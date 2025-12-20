@@ -9,6 +9,7 @@ import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items
 import { ebookFormat } from './simebv-ebook-format.js'
 import { NavBar } from './simebv-navbar.js'
 import { HeaderBar } from './simebv-header.js'
+import { SideBar } from './simebv-sidebar.js'
 const { __, _x, _n, sprintf } = wp.i18n;
 
 // Import css for the Viewer's container element, as static asset
@@ -125,26 +126,32 @@ export class Reader {
 
     _closeMenus() {
         let focusTo
-        if (this._sideBar.classList.contains('simebv-show')) {
-            focusTo = this._sideBarButton
+        if (this._sideBar.isVisible()) {
+            focusTo = this._headerBar.buttonSideBar
         }
         this._overlay.classList.remove('simebv-show')
-        this._sideBar.classList.remove('simebv-show')
+        this._sideBar.hide()
         this.menu.hide()
         if (focusTo) {
             focusTo.focus()
         }
     }
 
-    constructor(container, { menu, navBar, headerBar, realFullscreen } = {}) {
+    constructor(container, { menu, navBar, headerBar, sideBar, realFullscreen } = {}) {
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
         this._rootDiv = this._root.querySelector('#simebv-reader-root')
         this._bookContainer = this._root.querySelector('#simebv-book-container')
-        this._sideBar = this._root.querySelector('#simebv-side-bar')
         this._overlay = this._root.querySelector('#simebv-dimming-overlay')
         this._realFullscreen = realFullscreen
+
+        const sideBarContainer = this._root.querySelector('#simebv-side-bar')
+        if (!sideBar) {
+            sideBar = document.createElement('simebv-reader-sidebar')
+        }
+        sideBarContainer.append(sideBar)
+        this._sideBar = sideBar
 
         const headerBarContainer = this._root.querySelector('#simebv-header-bar')
         if (!headerBar) {
@@ -167,19 +174,17 @@ export class Reader {
         this.menu.element.classList.add('simebv-menu')
         this._setMenuMaxBlockSize()
 
-
         this._headerBar.addEventListener('side-bar-button', () => {
-            this._sideBar.style.display = null;
             setTimeout(() => {
                 this._overlay.classList.add('simebv-show')
-                this._sideBar.classList.add('simebv-show')
+                this._sideBar.show()
                 this._tocView.getCurrentItem()?.focus()
             }, 20)
         })
         this._overlay.addEventListener('click', () => {
             this._closeMenus()
         })
-        this._sideBar.addEventListener('click', () => {
+        this._sideBar.addEventListener('side-bar-clicked', () => {
             this._tocView.getCurrentItem()?.focus()
         })
         this._root.addEventListener('closeMenu', () => {
@@ -408,10 +413,10 @@ export class Reader {
         document.title = ebookTitle
         this._headerBar.setHeader(ebookTitle)
         this._headerBar.dispatchEvent(newBookEvent)
-        this._root.querySelector('#simebv-side-bar-title').innerText = ebookTitle
-        this._root.querySelector('#simebv-side-bar-author').innerText = formatContributor(book.metadata?.author)
+        this._sideBar.setTitle(ebookTitle)
+        this._sideBar.setAuthor(formatContributor(book.metadata?.author))
         Promise.resolve(book.getCover?.())?.then(blob =>
-            blob ? this._root.querySelector('#simebv-side-bar-cover').src = URL.createObjectURL(blob) : null)
+            blob ? this._sideBar.setCover(URL.createObjectURL(blob)) : null)
 
         const toc = book.toc
         if (toc) {
@@ -419,7 +424,7 @@ export class Reader {
                 this.view.goTo(href).catch(e => console.error(e))
                 this._closeMenus()
             })
-            this._root.querySelector('#simebv-toc-view').append(this._tocView.element)
+            this._sideBar.attachToc(this._tocView.element)
         }
 
         // load and show highlights embedded in the file by Calibre
@@ -522,10 +527,10 @@ export class Reader {
 
     _setMenuMaxBlockSize() {
         if (this.menu) {
-            const subtractY = this._headerBar
+            const headerHeight = this._headerBar
                 ? this._headerBar.root.getBoundingClientRect().bottom - this.container.getBoundingClientRect().top
                 : 62
-            this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - subtractY) + 'px)'
+            this.menu.element.style.maxBlockSize = 'min(85svh, ' + Math.round(this.containerHeight - headerHeight) + 'px)'
         }
     }
 
@@ -576,18 +581,30 @@ export class Reader {
             case 'PageUp':
                 e.preventDefault()
                 this.view.prev()
+                if (this.view.isFixedLayout) {
+                    this.container.focus()
+                }
                 break
             case 'PageDown':
                 e.preventDefault()
                 this.view.next()
+                if (this.view.isFixedLayout) {
+                    this.container.focus()
+                }
                 break
             case 'ArrowLeft':
                 e.preventDefault()
                 this.view.goLeft()
+                if (this.view.isFixedLayout) {
+                    this.container.focus()
+                }
                 break
             case 'ArrowRight':
                 e.preventDefault()
                 this.view.goRight()
+                if (this.view.isFixedLayout) {
+                    this.container.focus()
+                }
                 break
             case 'Tab':
                 if (this.menu.element.classList.contains('simebv-show')
@@ -813,16 +830,7 @@ ${viewerUiCss}
     </div>
     <div id="simebv-dimming-overlay"></div>
     <div id="simebv-header-bar"></div>
-    <section id="simebv-side-bar">
-        <div id="simebv-side-bar-header">
-            <img id="simebv-side-bar-cover">
-            <div>
-                <h2 id="simebv-side-bar-title"></h2>
-                <p id="simebv-side-bar-author"></p>
-            </div>
-        </div>
-        <div id="simebv-toc-view"></div>
-    </section>
+    <section id="simebv-side-bar"></section>
     <div id="simebv-book-container"></div>
     <div id="simebv-nav-bar"></div>
 </div>

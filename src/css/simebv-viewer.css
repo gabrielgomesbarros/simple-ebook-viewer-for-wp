@@ -20,6 +20,7 @@
     --book-bg-color: transparent;
     --font-size-base: max(1rem, 17px);
     --font-size-input: max(var(--font-size-base), 16px);
+    --link-text: LinkText;
 }
 @supports (color-scheme: light dark) {
     @media all and (prefers-color-scheme: dark) {
@@ -32,9 +33,10 @@
             --side-bar-box-shadow-color: rgba(255, 255, 255, .1);
             --enabled-dot: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23FFFFFF%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E');
             --gray-text: rgb(132, 132, 132);
+            --link-text: lightblue;
         }
         #simebv-reader-root.simebv-supports-dark a:link {
-            color: lightblue;
+            color: var(--link-text);
         }
     }
 }
@@ -83,9 +85,10 @@ foliate-fxl::part(filter) {
     --side-bar-box-shadow-color: rgba(255, 255, 255, .1);
     --enabled-dot: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20fill%3D%22%23FFFFFF%22%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2212%22%20r%3D%223%22%2F%3E%3C%2Fsvg%3E');
     --gray-text: rgb(132, 132, 132);
+    --link-text: lightblue;
 }
 #simebv-reader-root.simebv-dark a:link {
-    color: lightblue;
+    color: var(--link-text);
 }
 #simebv-book-container {
     position: absolute;
@@ -136,7 +139,6 @@ input, button {
     border-radius: 6px;
     background: none;
     border: 0;
-/*    color: GrayText;*/
 }
 .simebv-toolbar button:hover {
     background: var(--active-bg);
@@ -192,18 +194,6 @@ input, button {
     height: 100%;
     width: 32ch;
     max-width: 85%;
-    transform: translateX(-320px);
-    display: flex;
-    flex-direction: column;
-    background: var(--sidebar-bg);
-    color: CanvasText;
-    border-right: solid 1px CanvasText;
-    box-shadow: 3px 0 5px 1px var(--side-bar-box-shadow-color);
-}
-#simebv-side-bar.simebv-show {
-    visibility: visible;
-    transform: translateX(0);
-    transition-delay: 0s;
 }
 #simebv-dimming-overlay {
     visibility: hidden;
