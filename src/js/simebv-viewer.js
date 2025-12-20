@@ -674,6 +674,7 @@ export class Reader {
             totalPages = section.total
         }
         const page = sprintf(
+            /* translators: current page number / total page number */
             __('Page %1$s / %2$s', 'simple-ebook-viewer'), currentPage, totalPages
         )
         this._navBar.dispatchEvent(new CustomEvent('relocate', { detail: {
