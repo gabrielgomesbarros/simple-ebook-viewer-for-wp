@@ -94,6 +94,8 @@ export class Reader {
     _sideBar
     _overlay
     _realFullscreen
+    _alwaysFullViewport
+    _showCloseButton
     _colorsFilterDialog
     _searchDialog
     _currentSearch
@@ -137,14 +139,16 @@ export class Reader {
         }
     }
 
-    constructor(container, { menu, navBar, headerBar, sideBar, realFullscreen } = {}) {
+    constructor(container, { menu, navBar, headerBar, sideBar, realFullscreen, alwaysFullViewport, showCloseButton, closeViewerCallback } = {}) {
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
         this._rootDiv = this._root.querySelector('#simebv-reader-root')
         this._bookContainer = this._root.querySelector('#simebv-book-container')
         this._overlay = this._root.querySelector('#simebv-dimming-overlay')
-        this._realFullscreen = realFullscreen
+        this._realFullscreen = !!realFullscreen
+        this._alwaysFullViewport = !!alwaysFullViewport
+        this._showCloseButton = !!(showCloseButton || alwaysFullViewport)
 
         const sideBarContainer = this._root.querySelector('#simebv-side-bar')
         if (!sideBar) {
@@ -174,6 +178,13 @@ export class Reader {
         this.menu.element.classList.add('simebv-menu')
         this._setMenuMaxBlockSize()
 
+        if (this._showCloseButton && typeof closeViewerCallback === 'function') {
+            this._headerBar.setAttribute('show-close-button', 'true')
+            this._headerBar.addEventListener('close-button', closeViewerCallback)
+            if (this._alwaysFullViewport) {
+                this._toggleFullViewport()
+            }
+        }
         this._headerBar.addEventListener('side-bar-button', () => {
             setTimeout(() => {
                 this._overlay.classList.add('simebv-show')
@@ -220,6 +231,8 @@ export class Reader {
         })
 
         this.setLocalizedDefaultInterface(this._root)
+
+        document.dispatchEvent(new CustomEvent('simebv-viewer-loaded'))
     }
 
     get containerHeight() {
@@ -414,7 +427,7 @@ export class Reader {
         this._headerBar.setHeader(ebookTitle)
         this._headerBar.dispatchEvent(newBookEvent)
         this._sideBar.setTitle(ebookTitle)
-        this._sideBar.setAuthor(ebookAuthor ?? formatContributor(book.metadata?.author))
+        this._sideBar.setAuthor(ebookAuthor ? ebookAuthor : formatContributor(book.metadata?.author))
         Promise.resolve(book.getCover?.())?.then(blob =>
             blob ? this._sideBar.setCover(URL.createObjectURL(blob)) : null)
 
@@ -478,6 +491,8 @@ export class Reader {
         this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+
+        document.dispatchEvent(new CustomEvent('simebv-ebook-loaded'))
     }
 
     _populateMenu(customMenuItems) {
@@ -866,6 +881,36 @@ export const show_error_msg = (container, msg) => {
 }
 
 
+const gatherOptionsFromContainer = container => {
+    const options = {
+        reader: {},
+        ebook: {}
+    }
+    if (container.getAttribute('data-simebv-always-full-viewport') === 'true') {
+        options.reader.alwaysFullViewport = true
+    }
+    if (container.getAttribute('data-simebv-show-close-button') === 'true') {
+        options.reader.showCloseButton = true
+    }
+    let return_to_url = container.getAttribute('data-simebv-return-to-url')
+    if (return_to_url) {
+        return_to_url = new URL(return_to_url)
+        if (return_to_url.origin === window.location.origin) {
+            options.reader.closeViewerCallback = () => window.location.assign(return_to_url.href)
+        }
+    }
+    if (container.getAttribute('data-simebv-real-fullscreen') === 'true') {
+        options.reader.realFullscreen = true
+    }
+    if (container.getAttribute('data-simebv-allow-js') === 'true') {
+        options.ebook.allowJS = true
+    }
+    options.ebook.ebookTitle = container.getAttribute('data-simebv-ebook-title') || ''
+    options.ebook.ebookAuthor = container.getAttribute('data-simebv-ebook-author') || ''
+    return options
+}
+
+
 export const initializeViewer = async containerID => {
     const ebook_path_el = document.getElementById(containerID);
     if (ebook_path_el) {
@@ -889,8 +934,9 @@ export const initializeViewer = async containerID => {
         }
         if (url) {
             try {
-                const reader = new Reader(ebook_path_el)
-                await reader.open(url)
+                const options = gatherOptionsFromContainer(ebook_path_el)
+                const reader = new Reader(ebook_path_el, options.reader)
+                await reader.open(url, options.ebook)
             } catch (e) {
                 const msg = document.createElement('p')
                 msg.append(
@@ -898,10 +944,15 @@ export const initializeViewer = async containerID => {
                     document.createElement('br'),
                     e.message
                 )
-                ebook_path_el.shadowRoot.innerHTML = ''
-                const newRoot = document.createElement('div')
-                ebook_path_el.shadowRoot.append(newRoot)
-                show_error_msg(newRoot, msg)
+                if (ebook_path_el.shadowRoot) {
+                    ebook_path_el.shadowRoot.innerHTML = ''
+                    const newRoot = document.createElement('div')
+                    ebook_path_el.shadowRoot.append(newRoot)
+                    show_error_msg(newRoot, msg)
+                }
+                else {
+                    show_error_msg(ebook_path_el, msg)
+                }
                 console.error(e)
             }
         }

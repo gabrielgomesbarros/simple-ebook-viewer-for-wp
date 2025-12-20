@@ -72,7 +72,20 @@ class SIMEBV_Base {
                 'html_name' => 'data-simebv-show-close-button', 'default' => 'false'
             ],
             'return-to-url' => [
-                'html_name' => 'data-simebv-return-to-url', 'default' => ''],
+                'html_name' => 'data-simebv-return-to-url', 'default' => ''
+            ],
+            'real-fullscreen' => [
+                'html_name' => 'data-simebv-real-fullscreen', 'default' => 'false'
+            ],
+            'allow-js' => [
+                'html_name' => 'data-simebv-allow-js', 'default' => 'false'
+            ],
+            'ebook-title' => [
+                'html_name' => 'data-simebv-ebook-title', 'default' => ''
+            ],
+            'ebook-author' => [
+                'html_name' => 'data-simebv-ebook-author', 'default' => ''
+            ],
         ],
     ];
 
