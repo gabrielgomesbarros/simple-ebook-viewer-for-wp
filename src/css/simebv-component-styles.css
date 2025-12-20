@@ -42,3 +42,7 @@ input, button {
 .simebv-icon-hidden {
     display: none;
 }
+:disabled, [aria-disabled="true"],
+.simebv-disabled-label {
+    color: var(--gray-text);
+}
