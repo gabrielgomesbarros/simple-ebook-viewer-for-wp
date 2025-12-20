@@ -836,17 +836,6 @@ ${viewerUiCss}
 </div>
 `
 
-const dragOverHandler = e => e.preventDefault()
-const dropHandler = e => {
-    e.preventDefault()
-    const item = Array.from(e.dataTransfer.items)
-        .find(item => item.kind === 'file')
-    if (item) {
-        const entry = item.webkitGetAsEntry()
-        open(entry.isFile ? item.getAsFile() : entry).catch(e => console.error(e))
-    }
-}
-
 
 // from vendor/foliate-js/view.js
 const fetchFile = async url => {
