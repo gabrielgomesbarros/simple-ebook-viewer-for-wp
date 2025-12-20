@@ -326,7 +326,7 @@ export class Reader {
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
-    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, allowJS, injectMathJaxData, filterEbookContent } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, ebookAuthor, allowJS, injectMathJaxData, filterEbookContent } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
@@ -414,7 +414,7 @@ export class Reader {
         this._headerBar.setHeader(ebookTitle)
         this._headerBar.dispatchEvent(newBookEvent)
         this._sideBar.setTitle(ebookTitle)
-        this._sideBar.setAuthor(formatContributor(book.metadata?.author))
+        this._sideBar.setAuthor(ebookAuthor ?? formatContributor(book.metadata?.author))
         Promise.resolve(book.getCover?.())?.then(blob =>
             blob ? this._sideBar.setCover(URL.createObjectURL(blob)) : null)
 
