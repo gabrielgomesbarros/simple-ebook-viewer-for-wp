@@ -135,6 +135,8 @@ export function createMenuItemsStd(reader, injectCSS) {
                 [_x('Sepia', 'Theme color', 'simple-ebook-viewer'), 'simebv-sepia'],
                 [_x('Light', 'Theme color', 'simple-ebook-viewer'), 'simebv-light'],
                 [_x('Dark', 'Theme color', 'simple-ebook-viewer'), 'simebv-dark'],
+                [_x('Light (forced)', 'Theme color', 'simple-ebook-viewer'), 'simebv-light-forced'],
+                [_x('Dark (forced)', 'Theme color', 'simple-ebook-viewer'), 'simebv-dark-forced'],
             ],
             onclick: value => {
                 switch (value) {
@@ -145,6 +147,7 @@ export function createMenuItemsStd(reader, injectCSS) {
                         )
                         reader.style.colorScheme = 'only light'
                         reader.style.bgColor = '#f9f1cc'
+                        reader.style.forcedColorScheme = ''
                         reader.view?.renderer.setStyles?.(injectCSS(reader.style))
                         break
                     case 'simebv-light':
@@ -154,6 +157,17 @@ export function createMenuItemsStd(reader, injectCSS) {
                         )
                         reader.style.colorScheme = 'only light'
                         reader.style.bgColor = '#ffffff'
+                        reader.style.forcedColorScheme = ''
+                        reader.view?.renderer.setStyles?.(injectCSS(reader.style))
+                        break
+                    case 'simebv-light-forced':
+                        reader._rootDiv.classList.add('simebv-light')
+                        reader._rootDiv.classList.remove(
+                            'simebv-supports-dark', 'simebv-sepia', 'simebv-dark'
+                        )
+                        reader.style.colorScheme = 'only light'
+                        reader.style.bgColor = '#ffffff'
+                        reader.style.forcedColorScheme = 'light'
                         reader.view?.renderer.setStyles?.(injectCSS(reader.style))
                         break
                     case 'simebv-dark':
@@ -163,7 +177,18 @@ export function createMenuItemsStd(reader, injectCSS) {
                         )
                         reader.style.colorScheme = 'only dark'
                         reader.style.bgColor = '#090909'
-                            reader.view?.renderer.setStyles?.(injectCSS(reader.style))
+                        reader.style.forcedColorScheme = ''
+                        reader.view?.renderer.setStyles?.(injectCSS(reader.style))
+                        break
+                    case 'simebv-dark-forced':
+                        reader._rootDiv.classList.add('simebv-dark')
+                        reader._rootDiv.classList.remove(
+                            'simebv-supports-dark', 'simebv-sepia', 'simebv-light'
+                        )
+                        reader.style.colorScheme = 'only dark'
+                        reader.style.bgColor = '#090909'
+                        reader.style.forcedColorScheme = 'dark'
+                        reader.view?.renderer.setStyles?.(injectCSS(reader.style))
                         break
                     case 'auto':
                     default:
@@ -173,6 +198,7 @@ export function createMenuItemsStd(reader, injectCSS) {
                         )
                         reader.style.colorScheme = 'light dark'
                         reader.style.bgColor = 'transparent'
+                        reader.style.forcedColorScheme = ''
                         reader.view?.renderer.setStyles?.(injectCSS(reader.style))
                 }
                 reader._savePreference('colors', value)

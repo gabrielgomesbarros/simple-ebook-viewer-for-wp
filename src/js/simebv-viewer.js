@@ -17,7 +17,7 @@ import '../css/simebv-container.css'
 // Import css for the Viewer's UI, as string
 import viewerUiCss from '../css/simebv-viewer.css?raw'
 // CSS to inject in iframe of reflowable ebooks
-export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor }) => `
+export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor, forcedColorScheme }) => `
     @namespace epub "http://www.idpf.org/2007/ops";
     :root {
         color-scheme: ${colorScheme} !important;
@@ -37,6 +37,14 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
             ? '[epub|type~="se:image.color-depth.black-on-transparent"] { filter: none !important; }'
             : ''
         }
+    }
+    ${forcedColorScheme.includes('dark')
+        ? 'body * { color: #ffffff !important; background-color: ' + bgColor + ' !important; border-color: #ffffff !important; }'
+        : ''
+    }
+    ${forcedColorScheme.includes('light')
+        ? 'body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
+        : ''
     }
     p, li, blockquote, dd {
         line-height: ${spacing};
@@ -119,6 +127,7 @@ export class Reader {
         fontSize: 1,
         colorScheme: 'light dark',
         bgColor: 'transparent',
+        forcedColorScheme: '',
     }
     annotations = new Map()
     annotationsByValue = new Map()
