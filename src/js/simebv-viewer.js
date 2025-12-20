@@ -310,37 +310,6 @@ export class Reader {
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
-    _populateMenu(customMenuItems) {
-        if (customMenuItems) {
-            this.menu.addMenuItems(customMenuItems)
-            return
-        }
-        const menuItems = createMenuItemsStd(this, getCSS)
-        if (this.view.isFixedLayout) {
-            this.menu.addMenuItems([
-                menuItems.get('search'),
-                menuItems.get('history'),
-                menuItems.get('colors'),
-                menuItems.get('colorFilter'),
-                menuItems.get('zoom'),
-                menuItems.get('positionViewer'),
-            ])
-        }
-        else {
-            this.menu.addMenuItems([
-                menuItems.get('search'),
-                menuItems.get('history'),
-                menuItems.get('layout'),
-                menuItems.get('maxPages'),
-                menuItems.get('fontSize'),
-                menuItems.get('margins'),
-                menuItems.get('colors'),
-                menuItems.get('colorFilter'),
-                menuItems.get('positionViewer'),
-            ])
-        }
-    }
-
     async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, allowJS, injectMathJaxData, filterEbookContent } = {}) {
         this.view = document.createElement('foliate-view')
         this._bookContainer.append(this.view)
@@ -493,6 +462,37 @@ export class Reader {
         this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+    }
+
+    _populateMenu(customMenuItems) {
+        if (customMenuItems) {
+            this.menu.addMenuItems(customMenuItems)
+            return
+        }
+        const menuItems = createMenuItemsStd(this, getCSS)
+        if (this.view.isFixedLayout) {
+            this.menu.addMenuItems([
+                menuItems.get('search'),
+                menuItems.get('history'),
+                menuItems.get('colors'),
+                menuItems.get('colorFilter'),
+                menuItems.get('zoom'),
+                menuItems.get('positionViewer'),
+            ])
+        }
+        else {
+            this.menu.addMenuItems([
+                menuItems.get('search'),
+                menuItems.get('history'),
+                menuItems.get('layout'),
+                menuItems.get('maxPages'),
+                menuItems.get('fontSize'),
+                menuItems.get('margins'),
+                menuItems.get('colors'),
+                menuItems.get('colorFilter'),
+                menuItems.get('positionViewer'),
+            ])
+        }
     }
 
     _setInitialMenuStatus(initialMenuStatus) {
