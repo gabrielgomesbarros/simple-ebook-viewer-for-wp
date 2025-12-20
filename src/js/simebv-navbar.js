@@ -13,11 +13,9 @@ template.innerHTML = `
 }
 #progress-slider {
     width: 100%;
-    /*flex-grow: 1;*/
     display: none;
 }
 #progress-percent, #progress-pages {
-    /*flex-grow: 1;*/
     margin: 0 12px;
     display: none;
     text-align: center;
