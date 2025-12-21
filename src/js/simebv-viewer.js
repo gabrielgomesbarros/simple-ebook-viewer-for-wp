@@ -134,6 +134,9 @@ export class Reader {
     container
     menu
     _ebookTitle
+    _overlayerHandlers = new Map()
+    _overlayerActive
+    _overlayerDefault
 
     _closeMenus() {
         let focusTo
@@ -239,6 +242,10 @@ export class Reader {
             this._setMenuMaxBlockSize()
         })
 
+        this._overlayerHandlers
+            .set('searchOverlayer', this.searchOverlayer)
+            .set('calibreBookmarksOverlayer', this.calibreBookmarksOverlayer)
+
         this.setLocalizedDefaultInterface(this._root)
 
         document.dispatchEvent(new CustomEvent('simebv-viewer-loaded'))
@@ -246,6 +253,41 @@ export class Reader {
 
     get containerHeight() {
         return this.container.getBoundingClientRect().height
+    }
+
+    searchOverlayer(e) {
+        const { draw } = e.detail
+        draw(Overlayer.outline, { color: 'green' })
+    }
+
+    calibreBookmarksOverlayer(e) {
+        const { draw, annotation } = e.detail
+        const { color } = annotation
+        draw(Overlayer.highlight, { color })
+    }
+
+    activateOverlayerHandler(name) {
+        if (!this._overlayerHandlers.has(name)) {
+            return
+        }
+        const current = this._overlayerHandlers.get(this._overlayerActive)
+        if (current) {
+            this.view.removeEventListener('draw-annotation', current)
+        }
+        this.view.addEventListener('draw-annotation', this._overlayerHandlers.get(name))
+        this._overlayerActive = name
+    }
+
+    deactivateOverlayerHandler(name) {
+        if (this._overlayerHandlers.has(name) && this._overlayerActive === name) {
+            if (this._overlayerDefault) {
+                this.activateOverlayerHandler(this._overlayerDefault)
+            }
+            else  {
+                this.view.removeEventListener('draw-annotation', this._overlayerHandlers.get(name))
+                this._overlayerActive = undefined
+            }
+        }
     }
 
     _createFilterDialog(bookContainer, isFixedLayout) {
@@ -292,6 +334,7 @@ export class Reader {
         this.searchCleanUp()
         this._currentSearchQuery = str
         this._currentSearch = await this.view?.search({query: str})
+        this.activateOverlayerHandler('searchOverlayer')
         await this.nextMatch()
     }
     boundDoSearch = this.doSearch.bind(this)
@@ -304,8 +347,14 @@ export class Reader {
                 && this._currentSearchResult.length > 0
                 && this._currentSearchResultIndex < this._currentSearchResult.length - 1
         ) {
+            const oldCFI = this._currentSearchResult[this._currentSearchResultIndex]?.cfi
+            if (oldCFI) {
+                this.view.deleteAnnotation({value: oldCFI})
+            }
             this._currentSearchResultIndex++
-            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
+            const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
+            await this.view.goTo(newCFI)
+            this.view.addAnnotation({value: newCFI})
             return
         }
         let result = await this._currentSearch.next()
@@ -314,8 +363,14 @@ export class Reader {
         }
         if (result.value?.subitems) {
             this._currentSearchResult.push(...result.value.subitems)
+            const oldCFI = this._currentSearchResult[this._currentSearchResultIndex]?.cfi
+            if (oldCFI) {
+                this.view.deleteAnnotation({value: oldCFI})
+            }
             this._currentSearchResultIndex++
-            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
+            const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
+            await this.view.goTo(newCFI)
+            this.view.addAnnotation({value: newCFI})
             return
         }
         else {
@@ -332,17 +387,28 @@ export class Reader {
                 && this._currentSearchResult.length > 0
                 && this._currentSearchResultIndex > 0
         ) {
+            const oldCFI = this._currentSearchResult[this._currentSearchResultIndex]?.cfi
+            if (oldCFI) {
+                this.view.deleteAnnotation({ value: oldCFI })
+            }
             this._currentSearchResultIndex--
-            await this.view.goTo(this._currentSearchResult[this._currentSearchResultIndex].cfi)
+            const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
+            this.view.addAnnotation({ value: newCFI })
+            await this.view.goTo(newCFI)
             return
         }
     }
     boundPrevMatch = this.prevMatch.bind(this)
 
     async searchCleanUp() {
+        const lastCFI = this._currentSearchResult[this._currentSearchResultIndex]?.cfi
+        if (lastCFI) {
+            this.view.deleteAnnotation({ value: lastCFI })
+        }
         this._currentSearch = undefined
         this._currentSearchResult = []
         this._currentSearchResultIndex = -1
+        this.deactivateOverlayerHandler('searchOverlayer')
         this.view.clearSearch()
         this.view.deselect()
     }
@@ -471,11 +537,8 @@ export class Reader {
                 if (list) for (const annotation of list)
                     this.view.addAnnotation(annotation)
             })
-            this.view.addEventListener('draw-annotation', e => {
-                const { draw, annotation } = e.detail
-                const { color } = annotation
-                draw(Overlayer.highlight, { color })
-            })
+            this.activateOverlayerHandler('calibreBookmarksOverlayer')
+            this._overlayerDefault = 'calibreBookmarksOverlayer'
             this.view.addEventListener('show-annotation', e => {
                 const annotation = this.annotationsByValue.get(e.detail.value)
                 if (annotation.note) alert(annotation.note)
@@ -651,6 +714,7 @@ export class Reader {
                 break
             case 'f':
                 if (e.ctrlKey) {
+                    this._closeMenus()
                     this.openSearchDialog()
                     e.preventDefault()
                 }
