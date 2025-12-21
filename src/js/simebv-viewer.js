@@ -837,6 +837,8 @@ export class Reader {
                 sepia: 'simebv-sepia',
                 light: 'simebv-light',
                 dark: 'simebv-dark',
+                'light-forced': 'simebv-light-forced',
+                'dark-forced': 'simebv-dark-forced',
             },
             margins: {
                 small: '4%',
