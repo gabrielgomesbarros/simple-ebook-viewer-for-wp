@@ -1,4 +1,5 @@
 import { commonStyles } from './simebv-component-styles.js'
+const { __, _x, _n, sprintf } = wp.i18n
 
 const template = document.createElement('template')
 template.innerHTML = `
@@ -108,6 +109,9 @@ template.innerHTML = `
         <div>
             <h2 id="side-bar-title"></h2>
             <p id="side-bar-author"></p>
+            <p>
+                <a href="javascript:void(0)" id="side-bar-details"></a>
+            </p>
         </div>
     </div>
     <div id="toc-view"></div>
@@ -119,6 +123,7 @@ export class SideBar extends HTMLElement {
     cover
     title
     author
+    details
     tocView
 
     constructor() {
@@ -132,11 +137,23 @@ export class SideBar extends HTMLElement {
         this.cover = this.shadowRoot.getElementById('side-bar-cover')
         this.title = this.shadowRoot.getElementById('side-bar-title')
         this.author = this.shadowRoot.getElementById('side-bar-author')
+        this.details = this.shadowRoot.getElementById('side-bar-details')
         this.tocView = this.shadowRoot.getElementById('toc-view')
+        this.details.textContent = __('Details', 'simple-ebook-viewer')
     }
 
     connectedCallback() {
+        this.root.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.dispatchEvent(new CustomEvent('side-bar-close'))
+            }
+        })
         this.root.addEventListener('click', () => this.dispatchEvent(new CustomEvent('side-bar-clicked')))
+        this.details.addEventListener('click', (e) => {
+            this.dispatchEvent(new CustomEvent('show-details'))
+            e.preventDefault()
+            e.stopPropagation()
+        })
     }
 
     isVisible() {

@@ -4,6 +4,7 @@ import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
+import { metadataDialog } from './simebv-metadata-dialog.js'
 import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
@@ -104,6 +105,7 @@ export class Reader {
     _realFullscreen
     _alwaysFullViewport
     _showCloseButton
+    _metadataDialog
     _colorsFilterDialog
     _searchDialog
     _currentSearch
@@ -133,6 +135,7 @@ export class Reader {
     annotationsByValue = new Map()
     container
     menu
+    _ebookLocales
     _ebookTitle
     _overlayerHandlers = new Map()
     _overlayerActive
@@ -210,6 +213,7 @@ export class Reader {
         this._sideBar.addEventListener('side-bar-clicked', () => {
             this._tocView.getCurrentItem()?.focus()
         })
+        this._sideBar.addEventListener('side-bar-close', this._closeMenus.bind(this))
         this._root.addEventListener('closeMenu', () => {
             if (!this._sideBar.classList.contains('simebv-show')) {
                 this._overlay.classList.remove('simebv-show')
@@ -255,6 +259,10 @@ export class Reader {
         return this.container.getBoundingClientRect().height
     }
 
+    get containerWidth() {
+        return this.container.getBoundingClientRect().width
+    }
+
     searchOverlayer(e) {
         const { draw } = e.detail
         draw(Overlayer.outline, { color: 'green' })
@@ -288,6 +296,16 @@ export class Reader {
                 this._overlayerActive = undefined
             }
         }
+    }
+
+    openMetadataDialog() {
+        if (!this._metadataDialog) {
+            this._metadataDialog = metadataDialog(this.view?.book?.metadata ?? {}, this._getEbookLocales())
+            this._metadataDialog.id = 'simebv-metadata-dialog'
+            this._rootDiv.append(this._metadataDialog)
+        }
+        this._metadataDialog.style.maxWidth = (this.containerWidth - 30) + 'px'
+        this._metadataDialog.showModal()
     }
 
     _createFilterDialog(bookContainer, isFixedLayout) {
@@ -505,6 +523,7 @@ export class Reader {
         this._sideBar.setAuthor(ebookAuthor ? ebookAuthor : formatContributor(book.metadata?.author))
         Promise.resolve(book.getCover?.())?.then(blob =>
             blob ? this._sideBar.setCover(URL.createObjectURL(blob)) : null)
+        this._sideBar.addEventListener('show-details', this.openMetadataDialog.bind(this))
 
         const toc = book.toc
         if (toc) {
@@ -628,6 +647,11 @@ export class Reader {
         this.view?.history?.canGoForward
             ? this.menu.groups.history?.items.next.enable(true)
             : this.menu.groups.history?.items.next.enable(false)
+    }
+
+    _getEbookLocales() {
+        const lang = this.view?.book?.metadata.language
+        return Intl.ListFormat.supportedLocalesOf(lang)
     }
 
     _toggleFullScreen() {

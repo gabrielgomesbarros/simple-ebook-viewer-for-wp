@@ -428,18 +428,38 @@ input, button {
 .simebv-disabled-label {
     color: var(--gray-text);
 }
-#simebv-colors-filter-dialog {
+#simebv-colors-filter-dialog,
+#simebv-metadata-dialog {
     background-color: var(--menu-bg);
     border: none;
     box-shadow: var(--menu-box-shadow);
     border-radius: 3px;
+    box-sizing: border-box;
 }
 #simebv-colors-filter-dialog input {
     vertical-align: middle;
 }
-#simebv-colors-filter-dialog button {
+#simebv-metadata-dialog > div {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+}
+#simebv-colors-filter-dialog button,
+#simebv-metadata-dialog button {
     padding-inline: 12px;
     padding-block: 3px;
+}
+#simebv-metadata-dialog button {
+    flex-grow: 0;
+}
+#simebv-metadata-dialog dl {
+    flex-grow: 1;
+    overflow-y: auto;
+    max-height: 70vh;
+    max-height: 70dvh;
+}
+#simebv-metadata-dialog dt {
+    font-weight: bolder;
 }
 #simebv-search-dialog {
     justify-content: space-between;
