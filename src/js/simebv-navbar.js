@@ -83,10 +83,10 @@ export class NavBar extends HTMLElement {
     }
 
     setLocalizedLabels() {
-        const leftButtonLabel = __('Go left', 'simple-ebook-viewer')
+        const leftButtonLabel = __('Turn left page', 'simple-ebook-viewer')
         this.buttonLeft.setAttribute('aria-label', leftButtonLabel)
         this.buttonLeft.title = leftButtonLabel
-        const rightButtonLabel = __('Go right', 'simple-ebook-viewer')
+        const rightButtonLabel = __('Turn right page', 'simple-ebook-viewer')
         this.buttonRight.setAttribute('aria-label', rightButtonLabel)
         this.buttonRight.title = rightButtonLabel
     }
