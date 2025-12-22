@@ -8,7 +8,7 @@ template.innerHTML = `
     visibility: hidden;
     box-sizing: border-box;
     position: absolute;
-    z-index: 2;
+    z-index: 3;
     top: 0;
     left: 0;
     height: 100%;

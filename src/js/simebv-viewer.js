@@ -73,6 +73,9 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
     aside[epub|type~="rearnote"] {
         display: none;
     }
+    a:focus {
+        text-decoration: underline dotted .1em;
+    }
 `
 
 const locales = 'en'
@@ -932,6 +935,7 @@ export class Reader {
 
     setLocalizedDefaultInterface(root) {
         root.getElementById('simebv-loading-overlay-text').innerText = __('Loading...', 'simple-ebook-viewer')
+        root.getElementById('simebv-book-container').setAttribute('aria-label', __('Ebook contents', 'simple-ebook-viewer'))
     }
 }
 
@@ -944,10 +948,10 @@ ${viewerUiCss}
         <p id="simebv-loading-overlay-text">Loading...</p>
     </div>
     <div id="simebv-dimming-overlay"></div>
-    <div id="simebv-header-bar"></div>
     <section id="simebv-side-bar"></section>
-    <div id="simebv-book-container"></div>
+    <div id="simebv-header-bar"></div>
     <div id="simebv-nav-bar"></div>
+    <div id="simebv-book-container" tabindex="0"></div>
 </div>
 `
 
