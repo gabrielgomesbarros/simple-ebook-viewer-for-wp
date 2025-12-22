@@ -105,24 +105,6 @@ input, button {
     font-family: inherit;
     font-size: max(var(--font-size-input), 1rem);
 }
-#simebv-header-bar {
-    top: 0;
-    z-index: 2;
-}
-#simebv-nav-bar {
-    bottom: 0;
-}
-#simebv-side-bar {
-    visibility: hidden;
-    box-sizing: border-box;
-    position: absolute;
-    z-index: 2;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 32ch;
-    max-width: 85%;
-}
 #simebv-dimming-overlay {
     visibility: hidden;
     position: absolute;
