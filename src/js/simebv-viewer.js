@@ -140,9 +140,6 @@ export class Reader {
     menu
     _ebookLocales
     _ebookTitle
-    _overlayerHandlers = new Map()
-    _overlayerActive
-    _overlayerDefault
 
     _closeMenus() {
         let focusTo
@@ -249,10 +246,6 @@ export class Reader {
             this._setMenuMaxBlockSize()
         })
 
-        this._overlayerHandlers
-            .set('searchOverlayer', this.searchOverlayer)
-            .set('calibreBookmarksOverlayer', this.calibreBookmarksOverlayer)
-
         this.setLocalizedDefaultInterface(this._root)
 
         document.dispatchEvent(new CustomEvent('simebv-viewer-loaded'))
@@ -266,38 +259,16 @@ export class Reader {
         return this.container.getBoundingClientRect().width
     }
 
-    searchOverlayer(e) {
-        const { draw } = e.detail
-        draw(Overlayer.outline, { color: 'green' })
-    }
-
-    calibreBookmarksOverlayer(e) {
+    drawAnnotationHandler(e) {
         const { draw, annotation } = e.detail
-        const { color } = annotation
-        draw(Overlayer.highlight, { color })
-    }
-
-    activateOverlayerHandler(name) {
-        if (!this._overlayerHandlers.has(name)) {
-            return
-        }
-        const current = this._overlayerHandlers.get(this._overlayerActive)
-        if (current) {
-            this.view.removeEventListener('draw-annotation', current)
-        }
-        this.view.addEventListener('draw-annotation', this._overlayerHandlers.get(name))
-        this._overlayerActive = name
-    }
-
-    deactivateOverlayerHandler(name) {
-        if (this._overlayerHandlers.has(name) && this._overlayerActive === name) {
-            if (this._overlayerDefault) {
-                this.activateOverlayerHandler(this._overlayerDefault)
-            }
-            else  {
-                this.view.removeEventListener('draw-annotation', this._overlayerHandlers.get(name))
-                this._overlayerActive = undefined
-            }
+        switch (annotation.type) {
+            case 'current-search':
+                draw(Overlayer.outline, { color: 'green' })
+                break
+            case 'calibre-bookmark':
+            default:
+                draw(Overlayer.highlight, { color: annotation.color })
+                break
         }
     }
 
@@ -355,7 +326,6 @@ export class Reader {
         this.searchCleanUp()
         this._currentSearchQuery = str
         this._currentSearch = await this.view?.search({query: str})
-        this.activateOverlayerHandler('searchOverlayer')
         await this.nextMatch()
     }
     boundDoSearch = this.doSearch.bind(this)
@@ -375,7 +345,7 @@ export class Reader {
             this._currentSearchResultIndex++
             const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
             await this.view.goTo(newCFI)
-            this.view.addAnnotation({value: newCFI})
+            this.view.addAnnotation({value: newCFI, type: 'current-search'})
             return
         }
         let result = await this._currentSearch.next()
@@ -391,7 +361,7 @@ export class Reader {
             this._currentSearchResultIndex++
             const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
             await this.view.goTo(newCFI)
-            this.view.addAnnotation({value: newCFI})
+            this.view.addAnnotation({value: newCFI, type: 'current-search'})
             return
         }
         else {
@@ -414,8 +384,8 @@ export class Reader {
             }
             this._currentSearchResultIndex--
             const newCFI = this._currentSearchResult[this._currentSearchResultIndex].cfi
-            this.view.addAnnotation({ value: newCFI })
             await this.view.goTo(newCFI)
+            this.view.addAnnotation({ value: newCFI, type: 'current-search' })
             return
         }
     }
@@ -429,7 +399,6 @@ export class Reader {
         this._currentSearch = undefined
         this._currentSearchResult = []
         this._currentSearchResultIndex = -1
-        this.deactivateOverlayerHandler('searchOverlayer')
         this.view.clearSearch()
         this.view.deselect()
     }
@@ -490,24 +459,6 @@ export class Reader {
                 })
         })
 
-        if (this._lastReadPage != null) {
-            try {
-                if (typeof this._lastReadPage === 'string') {
-                    await this.view.init({lastLocation: this._lastReadPage})
-                }
-                else if (this._lastReadPage <= 1 && this._lastReadPage >= 0) {
-                    await this.view.init({lastLocation: { fraction: this._lastReadPage }})
-                }
-            }
-            catch (e) {
-                this._lastReadPage = null
-                console.error('Cannot load last read page:', e)
-            }
-        }
-
-        this.view.renderer.setStyles?.(getCSS(this.style))
-        if (!this._lastReadPage) this.view.renderer.next()
-
         this._navBar.addEventListener('go-left', () => this.view.goLeft())
         this._navBar.addEventListener('go-right', () => this.view.goRight())
         this._navBar.addEventListener('changed-page-slider', ({ detail }) => {
@@ -537,6 +488,8 @@ export class Reader {
             this._sideBar.attachToc(this._tocView.element)
         }
 
+        this.view.addEventListener('draw-annotation', this.drawAnnotationHandler.bind(this))
+
         // load and show highlights embedded in the file by Calibre
         const bookmarks = await book.getCalibreBookmarks?.()
         if (bookmarks) {
@@ -546,7 +499,8 @@ export class Reader {
                     const value = fromCalibreHighlight(obj)
                     const color = obj.style.which
                     const note = obj.notes
-                    const annotation = { value, color, note }
+                    const type = 'calibre-bookmark'
+                    const annotation = { value, color, note, type }
                     const list = this.annotations.get(obj.spine_index)
                     if (list) list.push(annotation)
                     else this.annotations.set(obj.spine_index, [annotation])
@@ -556,11 +510,10 @@ export class Reader {
             this.view.addEventListener('create-overlay', e => {
                 const { index } = e.detail
                 const list = this.annotations.get(index)
-                if (list) for (const annotation of list)
+                if (list) for (const annotation of list) {
                     this.view.addAnnotation(annotation)
+                }
             })
-            this.activateOverlayerHandler('calibreBookmarksOverlayer')
-            this._overlayerDefault = 'calibreBookmarksOverlayer'
             this.view.addEventListener('show-annotation', e => {
                 const annotation = this.annotationsByValue.get(e.detail.value)
                 if (annotation.note) alert(annotation.note)
@@ -585,6 +538,24 @@ export class Reader {
         this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+
+        if (this._lastReadPage != null) {
+            try {
+                if (typeof this._lastReadPage === 'string') {
+                    await this.view.init({lastLocation: this._lastReadPage})
+                }
+                else if (this._lastReadPage <= 1 && this._lastReadPage >= 0) {
+                    await this.view.init({lastLocation: { fraction: this._lastReadPage }})
+                }
+            }
+            catch (e) {
+                this._lastReadPage = null
+                console.error('Cannot load last read page:', e)
+            }
+        }
+
+        this.view.renderer.setStyles?.(getCSS(this.style))
+        if (!this._lastReadPage) this.view.renderer.next()
 
         document.dispatchEvent(new CustomEvent('simebv-ebook-loaded'))
     }
@@ -780,7 +751,7 @@ export class Reader {
             )
             : sprintf(
                 /* translators: Location in the book, followed by a numerical fraction */
-                __('Location %1$s/%2$s', 'simple-ebook-viewer'), location.current, location.total
+                __('Location %1$s/%2$s', 'simple-ebook-viewer'), location.current + 1, location.total
             )
         let currentPage = location.current + 1
         let totalPages = location.total
