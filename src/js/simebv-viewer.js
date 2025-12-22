@@ -779,8 +779,8 @@ export class Reader {
                 __('Page %1$s', 'simple-ebook-viewer'), pageItem.label
             )
             : sprintf(
-                /* translators: Loc: contraction for 'Location' in the book, followed by a numerical fraction */
-                __('Loc %1$s/%2$s', 'simple-ebook-viewer'), location.current, location.total
+                /* translators: Location in the book, followed by a numerical fraction */
+                __('Location %1$s/%2$s', 'simple-ebook-viewer'), location.current, location.total
             )
         let currentPage = location.current + 1
         let totalPages = location.total

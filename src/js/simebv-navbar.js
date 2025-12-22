@@ -27,7 +27,7 @@ template.innerHTML = `
             <path d="M 15 6 L 9 12 L 15 18"/>
         </svg>
     </button>
-    <div id="position-viewer">
+    <div id="position-viewer" aria-live="polite" aria-atomic="true">
         <input id="progress-slider" type="range" min="0" max="1" step="any" list="tick-marks">
         <datalist id="tick-marks"></datalist>
         <div id="progress-percent"></div>
@@ -89,6 +89,8 @@ export class NavBar extends HTMLElement {
         const rightButtonLabel = __('Turn right page', 'simple-ebook-viewer')
         this.buttonRight.setAttribute('aria-label', rightButtonLabel)
         this.buttonRight.title = rightButtonLabel
+        const sliderLabel = __('Location in ebook', 'simple-ebook-viewer')
+        this.slider.setAttribute('aria-label', sliderLabel)
     }
 
     connectedCallback() {
@@ -134,6 +136,7 @@ export class NavBar extends HTMLElement {
 
     updatePositionViewer({ detail }) {
         this.slider.title = detail.sliderTitle
+        this.slider.setAttribute('aria-valuetext', detail.sliderTitle)
         if (!this.changedPageSlider) {
             this.slider.value = detail.sliderValue
         }
