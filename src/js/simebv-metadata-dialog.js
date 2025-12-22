@@ -1,5 +1,24 @@
 const { __, _x, _n, sprintf } = wp.i18n
 
+export const metadataMap = [
+    ['title', __('Title', 'simple-ebook-viewer'), 'formatLanguageMap'],
+    ['subtitle', __('Subtitle', 'simple-ebook-viewer'), 'formatLanguageMap'],
+    ['author', __('Author', 'simple-ebook-viewer'), 'formatContributor'],
+    ['editor', __('Editor', 'simple-ebook-viewer'), 'formatContributor'],
+    ['translator', __('Translator', 'simple-ebook-viewer'), 'formatContributor'],
+    ['artist', __('Artist', 'simple-ebook-viewer'), 'formatContributor'],
+    ['illustrator', __('Illustrator', 'simple-ebook-viewer'), 'formatContributor'],
+    ['colorist', __('Colorist', 'simple-ebook-viewer'), 'formatContributor'],
+    ['narrator', __('Narrator', 'simple-ebook-viewer'), 'formatContributor'],
+    ['language', __('Language', 'simple-ebook-viewer'), 'formatContributor'],
+    ['publisher', __('Publisher', 'simple-ebook-viewer'), 'formatContributor'],
+    ['published', __('Publication date', 'simple-ebook-viewer'), 'formatOneContributor'],
+    ['subject', __('Subject', 'simple-ebook-viewer'), 'formatContributor'],
+    ['description', __('Description', 'simple-ebook-viewer'), 'formatOneContributor'],
+    ['source', __('Source', 'simple-ebook-viewer'), 'formatContributor'],
+    ['rights', __('Rights', 'simple-ebook-viewer'), 'formatOneContributor'],
+]
+
 export function metadataDialog(metadata, locales) {
     const dlg = document.createElement('dialog')
     dlg.closedBy = 'any'
@@ -27,6 +46,12 @@ export function metadataDialog(metadata, locales) {
         ? listFormat.format(contributor.map(formatOneContributor))
         : formatOneContributor(contributor)
 
+    const formatFunctions = {
+        formatLanguageMap,
+        formatOneContributor,
+        formatContributor,
+    }
+
     const makeEntry = (key, val, f) => {
         const k = document.createElement('dt')
         k.textContent = key
@@ -35,28 +60,12 @@ export function metadataDialog(metadata, locales) {
         return [k, v]
     }
 
-    const metadataMap = [
-        ['title', __('Title', 'simple-ebook-viewer'), formatLanguageMap],
-        ['subtitle', __('Subtitle', 'simple-ebook-viewer'), formatLanguageMap],
-        ['author', __('Author', 'simple-ebook-viewer'), formatContributor],
-        ['editor', __('Editor', 'simple-ebook-viewer'), formatContributor],
-        ['translator', __('Translator', 'simple-ebook-viewer'), formatContributor],
-        ['artist', __('Artist', 'simple-ebook-viewer'), formatContributor],
-        ['illustrator', __('Illustrator', 'simple-ebook-viewer'), formatContributor],
-        ['colorist', __('Colorist', 'simple-ebook-viewer'), formatContributor],
-        ['narrator', __('Narrator', 'simple-ebook-viewer'), formatContributor],
-        ['language', __('Language', 'simple-ebook-viewer'), formatContributor],
-        ['publisher', __('Publisher', 'simple-ebook-viewer'), formatContributor],
-        ['published', __('Publication date', 'simple-ebook-viewer'), formatOneContributor],
-        ['subject', __('Subject', 'simple-ebook-viewer'), formatContributor],
-        ['description', __('Description', 'simple-ebook-viewer'), formatOneContributor],
-        ['source', __('Source', 'simple-ebook-viewer'), formatContributor],
-        ['rights', __('Rights', 'simple-ebook-viewer'), formatOneContributor],
-    ]
-
     for (const [key, name, format] of metadataMap) {
         if (metadata[key]) {
-            list.append(...makeEntry(name, metadata[key], format))
+            const f = typeof format === 'function'
+                ? format
+                : (formatFunctions[format] ?? (s => s))
+            list.append(...makeEntry(name, metadata[key], f))
         }
     }
 
