@@ -318,9 +318,9 @@ export class Reader {
         this._searchDialog.classList.add('simebv-show')
     }
 
-    async doSearch(str) {
+    async doSearch(str, reverse = false) {
         if (this._currentSearch && this._currentSearchQuery === str) {
-            await this.nextMatch()
+            reverse ? await this.prevMatch() : await this.nextMatch()
             return
         }
         this.searchCleanUp()

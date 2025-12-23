@@ -67,7 +67,7 @@ export function searchDialog(onSearch, prevMatch, nextMatch, cleanup, returnFocu
                 if (txt) {
                     searching = true
                     try {
-                        await onSearch(txt)
+                        await onSearch(txt, e.shiftKey)
                         prevButton.disabled = false
                         nextButton.disabled = false
                     }
