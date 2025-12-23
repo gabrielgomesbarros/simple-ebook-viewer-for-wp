@@ -40,11 +40,11 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
         }
     }
     ${forcedColorScheme.includes('dark')
-        ? 'body * { color: #ffffff !important; background-color: ' + bgColor + ' !important; border-color: #ffffff !important; }'
+        ? 'body, body * { color: #ffffff !important; background-color: ' + bgColor + ' !important; border-color: #ffffff !important; }'
         : ''
     }
     ${forcedColorScheme.includes('light')
-        ? 'body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
+        ? 'body, body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
         : ''
     }
     p, li, blockquote, dd {

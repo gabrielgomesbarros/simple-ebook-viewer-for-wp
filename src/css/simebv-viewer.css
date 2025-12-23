@@ -40,7 +40,8 @@
         }
     }
 }
-foliate-view::part(filter) {
+foliate-view::part(filter),
+simebv-foliate-view::part(filter) {
     background-color: var(--book-bg-color);
     filter: none; /*var(--book-colors-filter);*/
 }
