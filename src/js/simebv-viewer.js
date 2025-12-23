@@ -266,9 +266,12 @@ export class Reader {
                 draw(Overlayer.outline, { color: 'green' })
                 break
             case 'calibre-bookmark':
-            default:
                 draw(Overlayer.highlight, { color: annotation.color })
                 break
+            default: {
+                const drawingFunc = annotation.shape ?? Overlayer.highlight
+                draw(drawingFunc, annotation)
+            }
         }
     }
 
