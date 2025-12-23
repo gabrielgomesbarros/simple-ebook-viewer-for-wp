@@ -4,6 +4,7 @@ import './simebv-header.js'
 import './simebv-sidebar.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
+import { compare } from '../../vendor/foliate-js/epubcfi.js'
 import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
@@ -329,9 +330,36 @@ export class Reader {
         this.searchCleanUp()
         this._currentSearchQuery = str
         this._currentSearch = await this.view?.search({query: str})
+        await this.matchUntilCurrentLocation()
         await this.nextMatch()
     }
     boundDoSearch = this.doSearch.bind(this)
+
+    async matchUntilCurrentLocation() {
+        while (true) {
+            const result = await this._currentSearch.next()
+            if (result.value === 'done' || result.done === true) {
+                break
+            }
+            if (result.value?.subitems) {
+                this._currentSearchResult.push(...result.value.subitems)
+                let resultCfi = this._currentSearchResult[this._currentSearchResult.length - 1].cfi
+                if (compare(this.view.lastLocation.cfi, resultCfi) > 0) {  // 1: resultCfi precedes this.view.lastLocation.cfi
+                    this._currentSearchResultIndex = this._currentSearchResult.length - 1
+                    continue
+                }
+                while (this._currentSearchResultIndex < this._currentSearchResult.length - 1) {
+                    this._currentSearchResultIndex++
+                    resultCfi = this._currentSearchResult[this._currentSearchResultIndex].cfi
+                    if (compare(this.view.lastLocation.cfi, resultCfi) <= 0) {
+                        this._currentSearchResultIndex--
+                        return
+                    }
+                }
+            }
+        }
+        this._currentSearchResultIndex = this._currentSearchResult.length - 2
+    }
 
     async nextMatch() {
         if (!this._currentSearch) {
