@@ -1,4 +1,7 @@
 import './simebv-view.js'
+import './simebv-navbar.js'
+import './simebv-header.js'
+import './simebv-sidebar.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
@@ -8,9 +11,6 @@ import { metadataDialog } from './simebv-metadata-dialog.js'
 import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
-import { NavBar } from './simebv-navbar.js'
-import { HeaderBar } from './simebv-header.js'
-import { SideBar } from './simebv-sidebar.js'
 const { __, _x, _n, sprintf } = wp.i18n;
 
 // Import css for the Viewer's container element, as static asset
@@ -943,7 +943,7 @@ const fetchFile = async url => {
 }
 
 
-const get_ebook_url = async id => {
+export const get_ebook_url = async id => {
     await wp.api.loadPromise
     let media = new wp.api.models.Media({ id: id })
     let res = await media.fetch()
@@ -959,7 +959,7 @@ export const show_error_msg = (container, msg) => {
 }
 
 
-const gatherOptionsFromContainer = container => {
+export const gatherOptionsFromContainer = container => {
     const options = {
         reader: {},
         ebook: {}
@@ -1036,3 +1036,18 @@ export const initializeViewer = async containerID => {
         }
     }
 }
+
+
+export * from './simebv-view.js'
+export * from './simebv-navbar.js'
+export * from './simebv-header.js'
+export * from './simebv-sidebar.js'
+export * from './simebv-utils.js'
+export * from './simebv-search-dialog.js'
+export * from './simebv-filters-dialog.js'
+export * from './simebv-metadata-dialog.js'
+export * from './simebv-menu.js'
+export * from './simebv-menu-items.js'
+export * from './simebv-ebook-format.js'
+export * from '../../vendor/foliate-js/ui/tree.js'
+export * from '../../vendor/foliate-js/overlayer.js'
