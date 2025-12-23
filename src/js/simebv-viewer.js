@@ -1,4 +1,4 @@
-import '../../vendor/foliate-js/view.js'
+import './simebv-view.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
@@ -401,11 +401,12 @@ export class Reader {
         this._currentSearchResultIndex = -1
         this.view.clearSearch()
         this.view.deselect()
+        this._closeMenus()
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
     async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, ebookAuthor, allowJS, injectMathJaxData, filterEbookContent } = {}) {
-        this.view = document.createElement('foliate-view')
+        this.view = document.createElement('simebv-foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
         await this.view.open(fileUrl)
@@ -516,7 +517,7 @@ export class Reader {
             })
             this.view.addEventListener('show-annotation', e => {
                 const annotation = this.annotationsByValue.get(e.detail.value)
-                if (annotation.note) alert(annotation.note)
+                if (annotation?.note) alert(annotation.note)
             })
         }
 
