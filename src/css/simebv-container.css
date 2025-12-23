@@ -35,3 +35,6 @@
     background-color: Canvas !important;
     z-index: 999999;
 }
+#simebv-reader-container.simebv-view-real-fullscreen {
+    border: none !important;
+}

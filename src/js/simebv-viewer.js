@@ -243,7 +243,15 @@ export class Reader {
             realFullscreen ? this._toggleFullScreen.bind(this) : this._toggleFullViewport.bind(this)
         )
         this.container.addEventListener('fullscreenchange', (e) => {
-            const detail = { data: document.fullscreenElement ? 'enter' : 'exit' }
+            const detail = {}
+            if (document.fullscreenElement) {
+                detail.data = 'enter'
+                this.container.classList.add('simebv-view-real-fullscreen')
+            }
+            else {
+                detail.data = 'exit'
+                this.container.classList.remove('simebv-view-real-fullscreen')
+            }
             this._headerBar.dispatchEvent(new CustomEvent('toggle-fullscreen', { detail }))
             this._setMenuMaxBlockSize()
         })
