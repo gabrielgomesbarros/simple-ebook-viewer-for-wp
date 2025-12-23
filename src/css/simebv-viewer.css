@@ -240,13 +240,36 @@ input, button {
 /*    color: GrayText;*/
 }
 #simebv-search-input {
-    appearance: none;
-    border: none;
     box-shadow: var(--border-box-shadow);
     border-radius: 2px;
-    padding-inline: 4px;
-    padding-block: 3px;
     color: CanvasText;
     flex: auto 1 1;
     min-inline-size: 15ch;
+    position: relative;
+}
+#simebv-search-input > input {
+    width: 100%;
+    appearance: none;
+    border: none;
+    positon: absolute;
+    padding-inline: 4px;
+    padding-block: 3px;
+}
+@keyframes simebv-rotate-circle {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+#simebv-busy-circle {
+    display: none;
+    animation: 1s steps(12) infinite simebv-rotate-circle;
+    position: absolute;
+    right: 26px;
+    top: calc(50% - 10px);
+}
+#simebv-busy-circle.simebv-show {
+    display: inline;
 }

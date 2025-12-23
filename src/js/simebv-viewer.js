@@ -337,6 +337,10 @@ export class Reader {
 
     async matchUntilCurrentLocation() {
         while (true) {
+            if (!this._currentSearch) {
+                // this can happen if the user closes the search panel during the search
+                return
+            }
             const result = await this._currentSearch.next()
             if (result.value === 'done' || result.done === true) {
                 break

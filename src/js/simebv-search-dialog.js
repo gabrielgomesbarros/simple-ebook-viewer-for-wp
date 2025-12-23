@@ -2,13 +2,31 @@ const { __, _x, _n, sprintf } = wp.i18n;
 
 export function searchDialog(onSearch, prevMatch, nextMatch, cleanup, returnFocus) {
     const dlg = document.createElement('dialog')
+    const inputContainer = document.createElement('div')
+    inputContainer.id = 'simebv-search-input'
+    inputContainer.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg" id="simebv-busy-circle">
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(30 14 14)" fill="rgb(0, 0, 0)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(60 14 14)" fill="rgb(21, 21, 21)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(90 14 14)" fill="rgb(42, 42, 42)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(120 14 14)" fill="rgb(64, 64, 64)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(150 14 14)" fill="rgb(85, 85, 85)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(180 14 14)" fill="rgb(106, 106, 106)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(210 14 14)" fill="rgb(128, 128, 128)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(240 14 14)" fill="rgb(149, 149, 149)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(270 14 14)" fill="rgb(170, 170, 170)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(300 14 14)" fill="rgb(192, 192, 192)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(330 14 14)" fill="rgb(213, 213, 213)" />
+        <rect x="24" y="12" rx="2" ry="2" width="4" height="4" transform="rotate(360 14 14)" fill="rgb(234, 234, 234)" />
+    </svg>`
+    const iconBusy = inputContainer.querySelector('#simebv-busy-circle')
+
     const input = document.createElement('input')
-    input.id = 'simebv-search-input'
     input.type = 'search'
     input.setAttribute('aria-label', __('Search', 'simple-ebook-viewer'))
     input.setAttribute('placeholder', __('Search', 'simple-ebook-viewer'))
     input.setAttribute('autofocus', true)
-    // input.setAttribute('size', '10')
+    inputContainer.append(input)
 
     const buttons = document.createElement('menu')
     const prevButton = document.createElement('button')
@@ -45,7 +63,7 @@ export function searchDialog(onSearch, prevMatch, nextMatch, cleanup, returnFocu
     closeButton.title = closeButtonLabel
     buttons.append(prevButton, nextButton, closeButton)
 
-    dlg.append(input, buttons)
+    dlg.append(inputContainer, buttons)
 
     const close = () => {
         cleanup()
@@ -66,6 +84,7 @@ export function searchDialog(onSearch, prevMatch, nextMatch, cleanup, returnFocu
                 const txt = input.value
                 if (txt) {
                     searching = true
+                    iconBusy.classList.add('simebv-show')
                     try {
                         await onSearch(txt, e.shiftKey)
                         prevButton.disabled = false
@@ -73,6 +92,7 @@ export function searchDialog(onSearch, prevMatch, nextMatch, cleanup, returnFocu
                     }
                     finally {
                         searching = false
+                        iconBusy.classList.remove('simebv-show')
                     }
                 }
                 break
