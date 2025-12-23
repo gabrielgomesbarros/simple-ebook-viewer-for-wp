@@ -5,7 +5,7 @@ import './simebv-sidebar.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import { compare } from '../../vendor/foliate-js/epubcfi.js'
-import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax } from './simebv-utils.js'
+import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax, convertFontSizePxToRem } from './simebv-utils.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { metadataDialog } from './simebv-metadata-dialog.js'
@@ -141,6 +141,7 @@ export class Reader {
     menu
     _ebookLocales
     _ebookTitle
+    _defaultFontSize
 
     _closeMenus() {
         let focusTo
@@ -249,6 +250,8 @@ export class Reader {
 
         this.setLocalizedDefaultInterface(this._root)
 
+        this._defaultFontSize = this.getDefaultFontSize()
+
         document.dispatchEvent(new CustomEvent('simebv-viewer-loaded'))
     }
 
@@ -258,6 +261,17 @@ export class Reader {
 
     get containerWidth() {
         return this.container.getBoundingClientRect().width
+    }
+
+    getDefaultFontSize() {
+        const fake = document.createElement('div')
+        fake.style.visibility = 'hidden'
+        fake.style.position = 'absolute'
+        fake.style.fontSize = '1rem'
+        document.body.append(fake)
+        const computedFontSize = parseFloat(window.getComputedStyle(fake).fontSize)
+        fake.remove()
+        return isNaN(computedFontSize) ? 16 : computedFontSize
     }
 
     drawAnnotationHandler(e) {
@@ -485,6 +499,9 @@ export class Reader {
                             if (!allowJS) {
                                 return removeInlineScripts(data, detail.type)
                             }
+                            return data
+                        case 'text/css':
+                            return convertFontSizePxToRem(data, this._defaultFontSize)
                         default:
                             return data
                     }

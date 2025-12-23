@@ -49,6 +49,15 @@ export function removeInlineScripts(data, type) {
     return data
 }
 
+export function convertFontSizePxToRem(data, defaultSize) {
+    return data.replace(
+        /(?<=[{\s;])font-size:\s*([0-9]*\.?[0-9]+)px/gi,
+        (match, p1, offset, string) => {
+            const n = parseFloat(p1)
+            return 'font-size:' + (Math.round((n / defaultSize) * 1000) / 1000) + 'rem'
+        })
+}
+
 export function injectMathJax(data, type, url, config) {
     try {
         let doc
