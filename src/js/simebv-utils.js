@@ -28,6 +28,7 @@ export function addCSPMeta(data, type) {
         const meta = doc.createElement('meta')
         meta.setAttribute('http-equiv', 'content-security-policy')
         meta.setAttribute('content', "script-src 'none'; script-src-attr 'none'; script-src-elem 'none'")
+        meta.setAttribute('data-simebv-inject', 'true')
         doc.head ? doc.head.prepend(meta) : doc.documentElement.prepend(meta)
         return doc.documentElement.outerHTML
     }
@@ -41,7 +42,7 @@ export function removeInlineScripts(data, type) {
         typeof data === 'string'
             ? doc = new DOMParser().parseFromString(data, type)
             : doc = data
-        doc.querySelectorAll('script').forEach(el => el.remove())
+        doc.querySelectorAll('script').forEach(el => el.replaceWith(doc.createElement('style')))
         return doc.documentElement.outerHTML
     }
     catch (e) { console.error(e) }
