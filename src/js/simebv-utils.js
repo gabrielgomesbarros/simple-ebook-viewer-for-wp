@@ -81,3 +81,12 @@ export function injectMathJax(data, type, url, config) {
 export function isNumeric(v) {
     return parseFloat(v) === Number(v)
 }
+
+export function getLang(el) {
+    while (el) {
+        if (el.hasAttribute('lang')) {
+            return el.getAttribute('lang')
+        }
+        el = el.parentElement
+    }
+}
