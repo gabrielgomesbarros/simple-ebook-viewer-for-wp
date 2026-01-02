@@ -31,6 +31,6 @@ export const ebookFormat = async (ebook) => {
     if (isFB2(ebook)) return 'fb2'
     if (await isPDF(ebook)) return 'pdf'
     const { isMOBI } = await import('../../vendor/foliate-js/mobi.js')
-    if (await isMOBI(ebook)) return 'mobi'
+    if (await isMOBI(ebook)) return /azw\d?$/i.test(ebook.name) ? 'azw' : 'mobi'
     return 'unknown'
 }
