@@ -3,7 +3,6 @@ const { __, _x, _n, sprintf } = wp.i18n;
 export function fontsDialog(reader, injectCSS) {
     const dlg = document.createElement('dialog')
     dlg.setAttribute('aria-labelledby', 'simebv-font-dialog-header')
-    // dlg.closedBy = 'any'
 
     const form = document.createElement('form')
     form.setAttribute('method', 'dialog')
@@ -94,7 +93,7 @@ export function fontsDialog(reader, injectCSS) {
         'sans-serif': sansSerif,
         'monospace': monospace,
     }
-    const initialChecked = reader._loadPreference('font-family')
+    const initialChecked = reader._loadPreference('font-family') ?? reader.style.fontFamily
     if (initialChecked && families[initialChecked]) {
         families[initialChecked].checked = true
     }
@@ -107,12 +106,14 @@ export function fontsDialog(reader, injectCSS) {
             reader.view?.renderer.setStyles?.(injectCSS(reader.style))
             reader._savePreference('font-family', selected)
         }
+        reader._closeMenus()
     })
 
     dlg.addEventListener('cancel', () => {
         if (families[reader.style.fontFamily]) {
             families[reader.style.fontFamily].checked = true
         }
+        reader._closeMenus()
     })
 
     return dlg

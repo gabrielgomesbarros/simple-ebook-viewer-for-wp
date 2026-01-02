@@ -47,6 +47,9 @@ class SIMEBV_Base {
             'default-font-size' => [
                 'html_name' => 'data-simebv-fontsize', 'default' => ''
             ],
+            'font-family' => [
+                'html_name' => 'data-simebv-font-family', 'default' => ''
+            ],
             'page-margins' => [
                 'html_name' => 'data-simebv-margins', 'default' => ''
             ],

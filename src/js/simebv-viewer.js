@@ -49,11 +49,10 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
         ? 'body, body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
         : ''
     }
-    ${(() => {
-        if (fontFamily !== 'auto') {
-            return 'body, body * { font-family: ' + fontFamily + ' !important; }'
-        }
-    })()}
+    ${fontFamily !== 'auto'
+        ? 'body, body * { font-family: ' + fontFamily + ' !important; }'
+        : ''
+    }
     p, li, blockquote, dd {
         line-height: ${spacing};
         text-align: ${justify ? 'justify' : 'start'};
@@ -146,6 +145,7 @@ export class Reader {
     annotationsByValue = new Map()
     container
     menu
+    _openEbookFormat
     _ebookLocales
     _ebookTitle
     _defaultFontSize
@@ -307,11 +307,12 @@ export class Reader {
 
     openMetadataDialog() {
         if (!this._metadataDialog) {
-            this._metadataDialog = metadataDialog(this.view?.book?.metadata ?? {}, this._getEbookLocales())
+            this._metadataDialog = metadataDialog(this.view?.book?.metadata ?? {}, this._getEbookLocales(), this._openEbookFormat)
             this._metadataDialog.id = 'simebv-metadata-dialog'
             this._rootDiv.append(this._metadataDialog)
+            this._metadataDialog.style.minWidth = 'min(320px, 100vw)'
         }
-        this._metadataDialog.style.maxWidth = (this.containerWidth - 30) + 'px'
+        this._metadataDialog.style.maxWidth = 'min(70vw, ' + (this.containerWidth - 30) + 'px)'
         this._metadataDialog.showModal()
     }
 
@@ -478,13 +479,13 @@ export class Reader {
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
-    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, ebookAuthor, allowJS, injectMathJaxData, filterEbookContent } = {}) {
+    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, ebookAuthor, fontFamily, allowJS, injectMathJaxData, filterEbookContent } = {}) {
         this.view = document.createElement('simebv-foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
         await this.view.open(fileUrl)
         this._populateMenu(menuItems)
-        this.view.book.ebookFormat = await ebookFormat(file)
+        this._openEbookFormat = await ebookFormat(file)
         if (this.view.isFixedLayout) {
             this._bookContainer.classList.add('simebv-fxd-layout')
         }
@@ -615,6 +616,7 @@ export class Reader {
         this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+        this._setInitialFontFamily(fontFamily)
 
         if (this._lastReadPage != null) {
             try {
@@ -863,6 +865,16 @@ export class Reader {
         return this._loadPreference(iden + '_LastPage')
     }
 
+    _setInitialFontFamily(fontFamilyAttr) {
+        let fontFamily = this._loadPreference('font-family')
+        if (!fontFamily && fontFamilyAttr !== 'auto') {
+            fontFamily = fontFamilyAttr
+            // this usually won't have an effect (this._canSavePreferences is initially set to false)
+            this._savePreference('font-family', fontFamily)
+        }
+        this.style.fontFamily = fontFamily
+    }
+
     _savePreferences(prefs) {
         if (!storageAvailable('localStorage') || !this._canSavePreferences) {
             return
@@ -1056,6 +1068,9 @@ export const gatherOptionsFromContainer = container => {
     }
     if (container.getAttribute('data-simebv-allow-js') === 'true') {
         options.ebook.allowJS = true
+    }
+    if (container.hasAttribute('data-simebv-font-family')) {
+        options.ebook.fontFamily = container.getAttribute('data-simebv-font-family')
     }
     options.ebook.ebookTitle = container.getAttribute('data-simebv-ebook-title') || ''
     options.ebook.ebookAuthor = container.getAttribute('data-simebv-ebook-author') || ''

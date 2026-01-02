@@ -17,9 +17,11 @@ export const metadataMap = [
     ['description', __('Description', 'simple-ebook-viewer'), 'formatOneContributor'],
     ['source', __('Source', 'simple-ebook-viewer'), 'formatContributor'],
     ['rights', __('Rights', 'simple-ebook-viewer'), 'formatOneContributor'],
+    ['identifier', __('Identifier', 'simple-ebook-viewer'), 'formatContributor'],
+    ['altIdentifier', __('Other identifiers', 'simple-ebook-viewer'), 'formatContributor'],
 ]
 
-export function metadataDialog(metadata, locales) {
+export function metadataDialog(metadata, locales, ebookFormat) {
     const dlg = document.createElement('dialog')
     dlg.closedBy = 'any'
     const container = document.createElement('div')
@@ -67,6 +69,11 @@ export function metadataDialog(metadata, locales) {
                 : (formatFunctions[format] ?? (s => s))
             list.append(...makeEntry(name, metadata[key], f))
         }
+    }
+    if (ebookFormat) {
+        list.append(
+            ...makeEntry(__('File format', 'simple-ebook-viewer'), ebookFormat, (s => s))
+        )
     }
 
     return dlg
