@@ -23,14 +23,14 @@ const isFBZ = ({ name, type }) =>
 
 
 export const ebookFormat = async (ebook) => {
-    if (isZip(ebook)) {
+    if (await isZip(ebook)) {
         if (isCBZ(ebook)) return 'cbz'
         else if (isFBZ(ebook)) return 'fb2'
         else return 'epub'
     }
     if (isFB2(ebook)) return 'fb2'
-    if (isPDF(ebook)) return 'pdf'
+    if (await isPDF(ebook)) return 'pdf'
     const { isMOBI } = await import('../../vendor/foliate-js/mobi.js')
-    if (isMOBI(ebook)) return 'mobi'
+    if (await isMOBI(ebook)) return 'mobi'
     return 'unknown'
 }
