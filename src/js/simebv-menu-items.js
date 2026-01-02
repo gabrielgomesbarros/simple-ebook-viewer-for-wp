@@ -206,6 +206,16 @@ export function createMenuItemsStd(reader, injectCSS) {
             horizontal: false,
         }],
 
+        ['fontFamily', {
+            name: 'fontFamily',
+            label: __('Font style...', 'simple-ebook-viewer'),
+            type: 'action',
+            onclick: () => reader.openFontsDialog(),
+            attrs: [
+                ['aria-haspopup', 'dialog'],
+            ],
+        }],
+
         ['colorFilter', {
             name: 'colorFilter',
             label: __('Color filter...', 'simple-ebook-viewer'),

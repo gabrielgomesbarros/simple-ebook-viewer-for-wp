@@ -159,7 +159,8 @@ input, button {
     color: var(--gray-text);
 }
 #simebv-colors-filter-dialog,
-#simebv-metadata-dialog {
+#simebv-metadata-dialog,
+#simebv-fonts-dialog {
     background-color: var(--menu-bg);
     border: none;
     box-shadow: var(--menu-box-shadow);
@@ -272,4 +273,31 @@ input, button {
 }
 #simebv-busy-circle.simebv-show {
     display: inline;
+}
+#simebv-fonts-dialog {
+    min-width: 20rem;
+}
+#simebv-fonts-dialog h3 {
+    margin-top: 0;
+    margin-bottom: 0.3rem;
+}
+#simebv-fonts-dialog fieldset {
+    border: none;
+    padding-inline: 0;
+    margin-inline: -.2rem;
+    margin-block-end: .3rem;
+}
+#simebv-fonts-dialog fieldset div {
+    margin-bottom: .4rem;
+}
+#simebv-fonts-dialog fieldset label {
+    padding-inline-start: .4rem;
+}
+#simebv-fonts-dialog button {
+    min-width: 3rem;
+}
+#simebv-fonts-dialog .simebv-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: .3rem;
 }

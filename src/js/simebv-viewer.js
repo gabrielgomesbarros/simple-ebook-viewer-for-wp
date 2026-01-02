@@ -9,6 +9,7 @@ import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMat
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { metadataDialog } from './simebv-metadata-dialog.js'
+import { fontsDialog } from './simebv-fonts-dialog.js'
 import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
@@ -19,7 +20,7 @@ import '../css/simebv-container.css'
 // Import css for the Viewer's UI, as string
 import viewerUiCss from '../css/simebv-viewer.css?raw'
 // CSS to inject in iframe of reflowable ebooks
-export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor, forcedColorScheme }) => `
+export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor, forcedColorScheme, fontFamily }) => `
     @namespace epub "http://www.idpf.org/2007/ops";
     :root {
         color-scheme: ${colorScheme} !important;
@@ -48,6 +49,11 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
         ? 'body, body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
         : ''
     }
+    ${(() => {
+        if (fontFamily !== 'auto') {
+            return 'body, body * { font-family: ' + fontFamily + ' !important; }'
+        }
+    })()}
     p, li, blockquote, dd {
         line-height: ${spacing};
         text-align: ${justify ? 'justify' : 'start'};
@@ -134,6 +140,7 @@ export class Reader {
         colorScheme: 'light dark',
         bgColor: 'transparent',
         forcedColorScheme: '',
+        fontFamily: 'auto',
     }
     annotations = new Map()
     annotationsByValue = new Map()
@@ -326,6 +333,15 @@ export class Reader {
             this._createFilterDialog(bookContainer)
         }
         this._colorsFilterDialog.showModal()
+    }
+
+    openFontsDialog() {
+        if (!this._fontsDialog) {
+            this._fontsDialog = fontsDialog(this, getCSS)
+            this._fontsDialog.id = 'simebv-fonts-dialog'
+            this._rootDiv.append(this._fontsDialog)
+        }
+        this._fontsDialog.showModal()
     }
 
     openSearchDialog() {
@@ -644,6 +660,7 @@ export class Reader {
                 menuItems.get('layout'),
                 menuItems.get('maxPages'),
                 menuItems.get('fontSize'),
+                menuItems.get('fontFamily'),
                 menuItems.get('margins'),
                 menuItems.get('colors'),
                 menuItems.get('colorFilter'),
