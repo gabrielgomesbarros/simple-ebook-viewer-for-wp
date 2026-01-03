@@ -46,9 +46,13 @@ template.innerHTML = `
 #side-bar-cover:not([src]) {
     display: none;
 }
+#side-bar-header div:has(#side-bar-title) {
+    min-width: 0;
+}
 #side-bar-title {
     margin: .5rem 0;
     font-size: inherit;
+    overflow-wrap: break-word;
 }
 #side-bar-author {
     margin: .5rem 0;
