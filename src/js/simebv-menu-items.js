@@ -259,7 +259,7 @@ export function createMenuItemsStd(reader, injectCSS) {
                         reader._savePreference('zoom', value)
                         break
                     case 'custom':
-                        let val = this._root.getElementById('simebv-zoom-numeric').value
+                        let val = reader.menu.element.querySelector('#simebv-zoom-numeric').value
                         if (!isNumeric(val) || val < 10 || val > 400 ) {
                             val = 100
                         }
@@ -273,7 +273,7 @@ export function createMenuItemsStd(reader, injectCSS) {
                         }
                         value = Number(value)
                         if (value >= 10 && value <= 400) {
-                            const inputElem = this._root.getElementById('simebv-zoom-numeric')
+                            const inputElem = reader.menu.element.querySelector('#simebv-zoom-numeric')
                             inputElem.value = value
                             inputElem.dispatchEvent(new Event('change'))
                         }
