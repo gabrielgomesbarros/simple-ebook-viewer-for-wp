@@ -12,12 +12,13 @@ export const metadataMap = [
     ['narrator', __('Narrator', 'simple-ebook-viewer'), 'formatContributor'],
     ['language', __('Language', 'simple-ebook-viewer'), 'formatContributor'],
     ['publisher', __('Publisher', 'simple-ebook-viewer'), 'formatContributor'],
-    ['published', __('Publication date', 'simple-ebook-viewer'), 'formatOneContributor'],
+    ['published', __('Publication date', 'simple-ebook-viewer'), 'formatDate'],
     ['subject', __('Subject', 'simple-ebook-viewer'), 'formatContributor'],
     ['description', __('Description', 'simple-ebook-viewer'), 'formatOneContributor'],
     ['source', __('Source', 'simple-ebook-viewer'), 'formatContributor'],
     ['rights', __('Rights', 'simple-ebook-viewer'), 'formatOneContributor'],
-    ['identifier', __('Identifier', 'simple-ebook-viewer'), 'formatContributor'],
+    ['pageBreakSource', __("Source of the page list", 'simple-ebook-viewer'), 'formatOneContributor'],
+    ['identifier', __('Identifier', 'simple-ebook-viewer'), 'formatId'],
     ['altIdentifier', __('Other identifiers', 'simple-ebook-viewer'), 'formatContributor'],
 ]
 
@@ -34,24 +35,41 @@ export function metadataDialog(metadata, locales, ebookFormat) {
 
     const listFormat = new Intl.ListFormat(locales, { style: 'short', type: 'unit' })
 
+    const formatId = x => typeof x === 'string'
+        ? x.replace(/^urn:([a-z0-9]+):(.+)$/i, (_, g1, g2) => `${g2} (${g1.toUpperCase()})`) : x
+
     const formatLanguageMap = x => {
         if (!x) { return '' }
-        if (typeof x === 'string') { return x }
+        if (typeof x === 'string') { return formatId(x) }
         const keys = Object.keys(x)
-        return x[keys[0]]
+        return formatId(x[keys[0]])
     }
 
     const formatOneContributor = contributor => typeof contributor === 'string'
-        ? contributor : formatLanguageMap(contributor?.name)
+        ? formatId(contributor) : formatLanguageMap(contributor?.name)
 
     const formatContributor = contributor => Array.isArray(contributor)
         ? listFormat.format(contributor.map(formatOneContributor))
         : formatOneContributor(contributor)
 
+    const formatDate = d => {
+        if (typeof d === 'string') {
+            try {
+                const date = new Date(d)
+                return date.toISOString().split('T')[0]
+            }
+            catch(e) {}
+            return d
+        }
+        return d
+    }
+
     const formatFunctions = {
         formatLanguageMap,
         formatOneContributor,
         formatContributor,
+        formatDate,
+        formatId,
     }
 
     const makeEntry = (key, val, f) => {
@@ -72,7 +90,7 @@ export function metadataDialog(metadata, locales, ebookFormat) {
     }
     if (ebookFormat) {
         list.append(
-            ...makeEntry(__('File format', 'simple-ebook-viewer'), ebookFormat, (s => s))
+            ...makeEntry(__('Ebook format', 'simple-ebook-viewer'), ebookFormat, (s => s))
         )
     }
 
