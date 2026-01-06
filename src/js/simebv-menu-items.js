@@ -216,6 +216,16 @@ export function createMenuItemsStd(reader, injectCSS) {
             ],
         }],
 
+        ['showAnnotations', {
+            name: 'showAnnotations',
+            label: __('Show/hide annotations...', 'simple-ebook-viewer'),
+            type: 'action',
+            onclick: () => reader.openAnnotationsDialog(),
+            attrs: [
+                ['aria-haspopup', 'dialog'],
+            ],
+        }],
+
         ['colorFilter', {
             name: 'colorFilter',
             label: __('Color filter...', 'simple-ebook-viewer'),

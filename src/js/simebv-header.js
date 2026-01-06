@@ -142,7 +142,7 @@ template.innerHTML = `
 </style>
 <div id="header-bar" class="simebv-toolbar">
     <div class="left-side-buttons">
-        <button id="side-bar-button" aria-label="Show sidebar">
+        <button id="side-bar-button" aria-label="Show sidebar" aria-expanded="false" aria-controls="simebv-reader-sidebar">
             <svg class="simebv-icon" width="32" height="32" viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M 4 6 h 16 M 4 12 h 16 M 4 18 h 16"/>
             </svg>
@@ -216,7 +216,13 @@ export class HeaderBar extends HTMLElement {
 
     connectedCallback() {
         this.buttonSideBar.addEventListener(
-            'click', () => this.dispatchEvent(new CustomEvent('side-bar-button', { bubbles: true }))
+            'click', () => {
+                const state = this.buttonSideBar.getAttribute('aria-expanded')
+                if (state === 'false') {
+                    this.buttonSideBar.setAttribute('aria-expanded', 'true')
+                }
+                this.dispatchEvent(new CustomEvent('side-bar-button', { bubbles: true }))
+            }
         )
         this.buttonMenu.addEventListener(
             'click', () => this.dispatchEvent(new CustomEvent('menu-button', { bubbles: true }))

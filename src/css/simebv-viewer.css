@@ -20,6 +20,7 @@
     --book-bg-color: transparent;
     --font-size-base: max(1rem, 17px);
     --font-size-input: max(var(--font-size-base), 16px);
+    --font-size-dlg-headings: 1.3rem;
     --link-text: LinkText;
 }
 @supports (color-scheme: light dark) {
@@ -160,12 +161,15 @@ input, button {
 }
 #simebv-colors-filter-dialog,
 #simebv-metadata-dialog,
-#simebv-fonts-dialog {
+#simebv-fonts-dialog,
+#simebv-annotations-dialog,
+#simebv-show-annotation-dialog {
     background-color: var(--menu-bg);
     border: none;
     box-shadow: var(--menu-box-shadow);
     border-radius: 3px;
     box-sizing: border-box;
+    overflow-wrap: break-word;
 }
 #simebv-colors-filter-dialog input {
     vertical-align: middle;
@@ -188,6 +192,7 @@ input, button {
     overflow-y: auto;
     max-height: 70vh;
     max-height: 70dvh;
+    width: 100%;
 }
 #simebv-metadata-dialog dt {
     font-weight: bolder;
@@ -274,29 +279,30 @@ input, button {
 #simebv-busy-circle.simebv-show {
     display: inline;
 }
-#simebv-fonts-dialog {
+.simebv-form-dialog {
     min-width: 20rem;
 }
-#simebv-fonts-dialog h3 {
+.simebv-form-dialog h2 {
     margin-top: 0;
-    margin-bottom: 0.3rem;
+    margin-bottom: 0.4rem;
+    font-size: var(--font-size-dlg-headings);
 }
-#simebv-fonts-dialog fieldset {
+.simebv-form-dialog fieldset {
     border: none;
     padding-inline: 0;
     margin-inline: -.2rem;
     margin-block-end: .3rem;
 }
-#simebv-fonts-dialog fieldset div {
+.simebv-form-dialog fieldset div {
     margin-bottom: .4rem;
 }
-#simebv-fonts-dialog fieldset label {
+.simebv-form-dialog fieldset label {
     padding-inline-start: .4rem;
 }
-#simebv-fonts-dialog button {
+.simebv-form-dialog button {
     min-width: 3rem;
 }
-#simebv-fonts-dialog .simebv-dialog-buttons {
+.simebv-dialog-buttons {
     display: flex;
     justify-content: flex-end;
     gap: .3rem;

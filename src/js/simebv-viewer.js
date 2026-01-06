@@ -4,12 +4,16 @@ import './simebv-header.js'
 import './simebv-sidebar.js'
 import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
-import { compare } from '../../vendor/foliate-js/epubcfi.js'
-import { storageAvailable, addCSPMeta, removeInlineScripts, isNumeric, injectMathJax, convertFontSizePxToRem } from './simebv-utils.js'
+import * as CFI from '../../vendor/foliate-js/epubcfi.js'
+import { storageAvailable, isNumeric, pageListOutline } from './simebv-utils.js'
+import { transformDoc, convertFontSizePxToRem } from './simebv-transform-ebook.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
-import { metadataDialog } from './simebv-metadata-dialog.js'
+import { metadataDialog, MetadataFormatter } from './simebv-metadata-dialog.js'
 import { fontsDialog } from './simebv-fonts-dialog.js'
+import { annotationsDialog } from './simebv-annotations-dialog.js'
+import { createShowAnnotationDialog } from './simebv-show-annotation-dialog.js'
+import { createPageListForAnnotations } from './simebv-page-list.js'
 import { Menu } from './simebv-menu.js'
 import { createMenuItemsStd, getInitialMenuStatusStd } from './simebv-menu-items.js'
 import { ebookFormat } from './simebv-ebook-format.js'
@@ -84,23 +88,7 @@ export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgC
     }
 `
 
-const locales = 'en'
-const percentFormat = new Intl.NumberFormat(locales, { style: 'percent' })
-const listFormat = new Intl.ListFormat(locales, { style: 'short', type: 'conjunction' })
-
-const formatLanguageMap = x => {
-    if (!x) return ''
-    if (typeof x === 'string') return x
-    const keys = Object.keys(x)
-    return x[keys[0]]
-}
-
-const formatOneContributor = contributor => typeof contributor === 'string'
-    ? contributor : formatLanguageMap(contributor?.name)
-
-const formatContributor = contributor => Array.isArray(contributor)
-    ? listFormat.format(contributor.map(formatOneContributor))
-    : formatOneContributor(contributor)
+const percentFormat = new Intl.NumberFormat('en', { style: 'percent' })
 
 export class Reader {
     _root
@@ -114,7 +102,10 @@ export class Reader {
     _realFullscreen
     _alwaysFullViewport
     _showCloseButton
+    _annotationsDialog
+    _showAnnotationDialog
     _metadataDialog
+    _metadataFormatter
     _colorsFilterDialog
     _searchDialog
     _currentSearch
@@ -143,17 +134,22 @@ export class Reader {
     }
     annotations = new Map()
     annotationsByValue = new Map()
+    pageList = new Map()
+    pageListByValue = new Map()
+    _showAnnotations
+    _showPageDelimiters
     container
     menu
     _openEbookFormat
-    _ebookLocales
     _ebookTitle
     _defaultFontSize
 
     _closeMenus() {
         let focusTo
         if (this._sideBar.isVisible()) {
+            this._sideBar.saveLastFocus()
             focusTo = this._headerBar.buttonSideBar
+            this._headerBar.buttonSideBar.setAttribute('aria-expanded', 'false')
         }
         this._overlay.classList.remove('simebv-show')
         this._sideBar.hide()
@@ -163,7 +159,10 @@ export class Reader {
         }
     }
 
-    constructor(container, { menu, navBar, headerBar, sideBar, realFullscreen, alwaysFullViewport, showCloseButton, closeViewerCallback } = {}) {
+    constructor(container, options) {
+        let { menu, navBar, headerBar, sideBar, realFullscreen,
+            alwaysFullViewport, showCloseButton, closeViewerCallback
+        } = options
         this.container = container ?? document.body
         this._root = this.container.attachShadow({ mode: 'open' })
         this._root.innerHTML = readerMarkup
@@ -178,6 +177,7 @@ export class Reader {
         if (!sideBar) {
             sideBar = document.createElement('simebv-reader-sidebar')
         }
+        sideBar.id = 'simebv-reader-sidebar'
         sideBarContainer.append(sideBar)
         this._sideBar = sideBar
 
@@ -211,9 +211,14 @@ export class Reader {
         }
         this._headerBar.addEventListener('side-bar-button', () => {
             setTimeout(() => {
-                this._overlay.classList.add('simebv-show')
-                this._sideBar.show()
-                this._tocView.getCurrentItem()?.focus()
+                if (this._sideBar.isVisible()) {
+                    this._closeMenus()
+                }
+                else {
+                    this._overlay.classList.add('simebv-show')
+                    this._sideBar.show()
+                    this._sideBar.setInitialFocus()
+                }
             }, 20)
         })
         this._overlay.addEventListener('click', () => {
@@ -224,7 +229,7 @@ export class Reader {
         })
         this._sideBar.addEventListener('side-bar-close', this._closeMenus.bind(this))
         this._root.addEventListener('closeMenu', () => {
-            if (!this._sideBar.classList.contains('simebv-show')) {
+            if (!this._sideBar.isVisible()) {
                 this._overlay.classList.remove('simebv-show')
             }
         })
@@ -238,6 +243,7 @@ export class Reader {
         this._headerBar.attachMenu(this.menu.element)
         this._headerBar.addEventListener('menu-button', (e) => {
             if (!this.menu.element.classList.contains('simebv-show')) {
+                this._canSavePreferences = true
                 this.menu.show(this._headerBar.buttonMenu)
                 this._overlay.classList.add('simebv-show')
             }
@@ -283,20 +289,24 @@ export class Reader {
         fake.style.visibility = 'hidden'
         fake.style.position = 'absolute'
         fake.style.fontSize = '1rem'
-        document.body.append(fake)
+        this._rootDiv.append(fake)
         const computedFontSize = parseFloat(window.getComputedStyle(fake).fontSize)
         fake.remove()
         return isNaN(computedFontSize) ? 16 : computedFontSize
     }
 
-    drawAnnotationHandler(e) {
-        const { draw, annotation } = e.detail
+    async drawAnnotationHandler(e) {
+        const { draw, annotation, doc, range } = e.detail
         switch (annotation.type) {
             case 'current-search':
                 draw(Overlayer.outline, { color: 'green' })
                 break
             case 'calibre-bookmark':
                 draw(Overlayer.highlight, { color: annotation.color })
+                break
+            case 'page-list':
+                const fontSize = this._defaultFontSize ?? this.getDefaultFontSize()
+                draw(pageListOutline, { color: '#E55330', label: annotation.label, type: annotation.type, fontSize })
                 break
             default: {
                 const drawingFunc = annotation.shape ?? Overlayer.highlight
@@ -305,9 +315,76 @@ export class Reader {
         }
     }
 
+    pageListCreateOverlay(e) {
+        const { index } = e.detail
+        const list = this.pageList.get(index)
+        if (list) {
+            for (const page of list) {
+                this.view.addAnnotation(page)
+            }
+        }
+    }
+    boundPageListCreateOverlay = this.pageListCreateOverlay.bind(this)
+
+    pageListShowAnnotation(e) {
+        const annotation = this.pageListByValue.get(e.detail.value)
+        if (annotation?.label) {
+            this.openShowAnnotationDialog(
+                __('Start of page ', 'simple-ebook-viewer') + annotation.label,
+                'Page list',
+            )
+        }
+    }
+    boundPageListShowAnnotation = this.pageListShowAnnotation.bind(this)
+
+    bookmarksCreateOverlay(e) {
+        const { index } = e.detail
+        const list = this.annotations.get(index)
+        if (list) {
+            for (const annotation of list) {
+                this.view.addAnnotation(annotation)
+            }
+        }
+    }
+    boundBookmarksCreateOverlay = this.bookmarksCreateOverlay.bind(this)
+
+    bookmarksShowAnnotation(e) {
+        const annotation = this.annotationsByValue.get(e.detail.value)
+        if (annotation?.note) {
+            this.openShowAnnotationDialog(annotation.note)
+        }
+    }
+    boundBookmarksShowAnnotation = this.bookmarksShowAnnotation.bind(this)
+
+    openShowAnnotationDialog(note, header) {
+        if (!this._showAnnotationDialog) {
+            this._showAnnotationDialog = createShowAnnotationDialog()
+            this._showAnnotationDialog.element.id = 'simebv-show-annotation-dialog'
+            this._showAnnotationDialog.element.classList.add('simebv-form-dialog')
+            this._rootDiv.append(this._showAnnotationDialog.element)
+        }
+        this._showAnnotationDialog.showAnnotation(note, header, this.container)
+    }
+
+    _createAnnotationsDialog() {
+        if (!this._annotationsDialog) {
+            this._annotationsDialog = annotationsDialog(this)
+            this._annotationsDialog.id = 'simebv-annotations-dialog'
+            this._annotationsDialog.classList.add('simebv-form-dialog')
+            this._rootDiv.append(this._annotationsDialog)
+        }
+    }
+
+    openAnnotationsDialog() {
+        if (!this._annotationsDialog) {
+            this._createAnnotationsDialog()
+        }
+        this._annotationsDialog.showModal()
+    }
+
     openMetadataDialog() {
         if (!this._metadataDialog) {
-            this._metadataDialog = metadataDialog(this.view?.book?.metadata ?? {}, this._getEbookLocales(), this._openEbookFormat)
+            this._metadataDialog = metadataDialog(this.view?.book?.metadata ?? {}, this._metadataFormatter, this._openEbookFormat)
             this._metadataDialog.id = 'simebv-metadata-dialog'
             this._rootDiv.append(this._metadataDialog)
             this._metadataDialog.style.minWidth = 'min(320px, 100vw)'
@@ -340,6 +417,7 @@ export class Reader {
         if (!this._fontsDialog) {
             this._fontsDialog = fontsDialog(this, getCSS)
             this._fontsDialog.id = 'simebv-fonts-dialog'
+            this._fontsDialog.classList.add('simebv-form-dialog')
             this._rootDiv.append(this._fontsDialog)
         }
         this._fontsDialog.showModal()
@@ -387,14 +465,14 @@ export class Reader {
             if (result.value?.subitems) {
                 this._currentSearchResult.push(...result.value.subitems)
                 let resultCfi = this._currentSearchResult[this._currentSearchResult.length - 1].cfi
-                if (compare(this.view.lastLocation.cfi, resultCfi) > 0) {  // 1: resultCfi precedes this.view.lastLocation.cfi
+                if (CFI.compare(this.view.lastLocation.cfi, resultCfi) > 0) {  // 1: resultCfi precedes this.view.lastLocation.cfi
                     this._currentSearchResultIndex = this._currentSearchResult.length - 1
                     continue
                 }
                 while (this._currentSearchResultIndex < this._currentSearchResult.length - 1) {
                     this._currentSearchResultIndex++
                     resultCfi = this._currentSearchResult[this._currentSearchResultIndex].cfi
-                    if (compare(this.view.lastLocation.cfi, resultCfi) <= 0) {
+                    if (CFI.compare(this.view.lastLocation.cfi, resultCfi) <= 0) {
                         this._currentSearchResultIndex--
                         return
                     }
@@ -479,7 +557,12 @@ export class Reader {
     }
     boundSearchCleanUp = this.searchCleanUp.bind(this)
 
-    async open(fileUrl, { menuItems, initialMenuStatus, ebookTitle, ebookAuthor, fontFamily, allowJS, injectMathJaxData, filterEbookContent } = {}) {
+    async open(fileUrl, options) {
+        let {
+            menuItems, initialMenuStatus, ebookTitle, ebookAuthor,
+            fontFamily, allowJS, injectMathJaxData, filterEbookContent,
+            showAnnotations, showPageDelimiters
+        } = options
         this.view = document.createElement('simebv-foliate-view')
         this._bookContainer.append(this.view)
         const file = await fetchFile(fileUrl)
@@ -509,20 +592,28 @@ export class Reader {
                 .resolve(detail.data)
                 .then(data => typeof filterEbookContent === 'function' ? filterEbookContent(data) : data)
                 .then(data => {
+                    const ops = new Map()
                     switch(detail.type) {
                         case 'application/xhtml+xml':
                         case 'text/html':
                             if (!allowJS) {
-                                return addCSPMeta(data, detail.type)
+                                ops.set('addCSPMeta', [])
                             }
-                            if (injectMathJaxData?.url) {
-                                return injectMathJax(data, detail.type, injectMathJaxData.url, injectMathJaxData.config)
+                            else if (injectMathJaxData?.url) {
+                                ops.set('injectMathJax', [injectMathJaxData.url, injectMathJaxData.config])
+                            }
+                            ops.set('convertFontSizePxToRem', [this._defaultFontSize])
+                            if (ops.size > 0) {
+                                data = transformDoc(data, detail.type, ops)
                             }
                             return data
                         case 'image/svg+xml':
                         case 'application/xml':
                             if (!allowJS) {
-                                return removeInlineScripts(data, detail.type)
+                                ops.set('removeInlineScripts', [])
+                            }
+                            if (ops.size > 0) {
+                                data = transformDoc(data, detail.type, ops)
                             }
                             return data
                         case 'text/css':
@@ -542,17 +633,17 @@ export class Reader {
         this._navBar.addEventListener('changed-page-slider', ({ detail }) => {
             this.view.goToFraction(parseFloat(detail.newLocation))
         })
-
         this.container.addEventListener('keydown', this._handleKeydown.bind(this))
+
+        this._metadataFormatter = new MetadataFormatter(this._getEbookLocales())
         if (!ebookTitle) {
-            ebookTitle = formatLanguageMap(book.metadata?.title) || 'Untitled Book'
+            ebookTitle = this._metadataFormatter.formatLanguageMap(book.metadata?.title) || 'Untitled Book'
         }
         this._ebookTitle = ebookTitle
-        document.title = ebookTitle
         this._headerBar.setHeader(ebookTitle)
         this._headerBar.dispatchEvent(newBookEvent)
         this._sideBar.setTitle(ebookTitle)
-        this._sideBar.setAuthor(ebookAuthor ? ebookAuthor : formatContributor(book.metadata?.author))
+        this._sideBar.setAuthor(ebookAuthor ? ebookAuthor : this._metadataFormatter.formatContributor(book.metadata?.author))
         Promise.resolve(book.getCover?.())?.then(blob =>
             blob ? this._sideBar.setCover(URL.createObjectURL(blob)) : null)
         this._sideBar.addEventListener('show-details', this.openMetadataDialog.bind(this))
@@ -563,18 +654,35 @@ export class Reader {
                 this.view.goTo(href).catch(e => console.error(e))
                 this._closeMenus()
             })
-            this._sideBar.attachToc(this._tocView.element)
+            this._sideBar.attachToc(this._tocView)
         }
 
         this.view.addEventListener('draw-annotation', this.drawAnnotationHandler.bind(this))
+        this._setInitialAnnotationOptions(showAnnotations, showPageDelimiters)
+
+        // load and show page delimiters if the ebook contains a page list
+        const pageList = book.pageList
+        if (pageList) {
+            const { pageList: pl, pageListByValue } = await createPageListForAnnotations(this, pageList)
+            this.pageList = pl
+            this.pageListByValue = pageListByValue
+            if (this._showPageDelimiters) {
+                this.view.addEventListener('create-overlay', this.boundPageListCreateOverlay)
+                this.view.addEventListener('show-annotation', this.boundPageListShowAnnotation)
+            }
+            this._pageListView = createTOCView(pageList, href => {
+                this.view.goTo(href).catch(e => console.error(e))
+                this._closeMenus()
+            })
+            this._sideBar.attachPageList(this._pageListView)
+        }
 
         // load and show highlights embedded in the file by Calibre
         const bookmarks = await book.getCalibreBookmarks?.()
         if (bookmarks) {
-            const { fromCalibreHighlight } = await import('../../vendor/foliate-js/epubcfi.js')
             for (const obj of bookmarks) {
                 if (obj.type === 'highlight') {
-                    const value = fromCalibreHighlight(obj)
+                    const value = CFI.fromCalibreHighlight(obj)
                     const color = obj.style.which
                     const note = obj.notes
                     const type = 'calibre-bookmark'
@@ -585,17 +693,10 @@ export class Reader {
                     this.annotationsByValue.set(value, annotation)
                 }
             }
-            this.view.addEventListener('create-overlay', e => {
-                const { index } = e.detail
-                const list = this.annotations.get(index)
-                if (list) for (const annotation of list) {
-                    this.view.addAnnotation(annotation)
-                }
-            })
-            this.view.addEventListener('show-annotation', e => {
-                const annotation = this.annotationsByValue.get(e.detail.value)
-                if (annotation?.note) alert(annotation.note)
-            })
+            if (this._showAnnotations) {
+                this.view.addEventListener('create-overlay', this.boundBookmarksCreateOverlay)
+                this.view.addEventListener('show-annotation', this.boundBookmarksShowAnnotation)
+            }
         }
 
         // Workaround for the stripping of search parameters
@@ -616,6 +717,7 @@ export class Reader {
         this._setInitialMenuStatus(initialMenuStatus)
         this._loadFilterPreferences()
         this._createFilterDialog(this._rootDiv, this.view.isFixedLayout)
+        this._createAnnotationsDialog()
         this._setInitialFontFamily(fontFamily)
 
         if (this._lastReadPage != null) {
@@ -637,6 +739,7 @@ export class Reader {
         if (!this._lastReadPage) this.view.renderer.next()
 
         document.dispatchEvent(new CustomEvent('simebv-ebook-loaded'))
+
     }
 
     _populateMenu(customMenuItems) {
@@ -659,6 +762,7 @@ export class Reader {
             this.menu.addMenuItems([
                 menuItems.get('search'),
                 menuItems.get('history'),
+                menuItems.get('showAnnotations'),
                 menuItems.get('layout'),
                 menuItems.get('maxPages'),
                 menuItems.get('fontSize'),
@@ -704,8 +808,16 @@ export class Reader {
     }
 
     _getEbookLocales() {
-        const lang = this.view?.book?.metadata.language
-        return Intl.ListFormat.supportedLocalesOf(lang)
+        let lang = this.view?.book?.metadata.language
+        if (typeof lang === 'string') {
+            lang = [lang]
+        }
+        return lang?.map(l => {
+            try {
+                return Intl.getCanonicalLocales(l)[0]
+            }
+            catch (e) {}
+        }).filter(Boolean)
     }
 
     _toggleFullScreen() {
@@ -783,7 +895,7 @@ export class Reader {
                         || this._searchDialog?.classList.contains('simebv-show')) {
                     this._closeMenus()
                 }
-                else if (this._realFullscreen) {
+                else if (this._realFullscreen && document.fullscreenElement) {
                     this._toggleFullScreen()
                 }
                 else if (this.container.classList.contains('simebv-view-fullscreen')) {
@@ -826,7 +938,7 @@ export class Reader {
         const percent = percentFormat.format(fraction)
         const loc = pageItem
             ? sprintf(
-                /* translators: %1s: page number */
+                /* translators: %1$s: page number */
                 __('Page %1$s', 'simple-ebook-viewer'), pageItem.label
             )
             : sprintf(
@@ -839,10 +951,13 @@ export class Reader {
             currentPage = section.current + 1
             totalPages = section.total
         }
-        const page = sprintf(
-            /* translators: current page number / total page number */
-            __('Page %1$s / %2$s', 'simple-ebook-viewer'), currentPage, totalPages
-        )
+        const page = pageItem
+            ? sprintf(
+                /* translators: %1$s: page number */
+                __('Page %1$s', 'simple-ebook-viewer'), pageItem.label)
+            : sprintf(
+                /* translators: current page number / total pages number */
+                __('Page %1$s / %2$s', 'simple-ebook-viewer'), currentPage, totalPages)
         this._navBar.dispatchEvent(new CustomEvent('relocate', { detail: {
             sliderValue: fraction,
             sliderTitle: `${percent} · ${loc}`,
@@ -850,6 +965,7 @@ export class Reader {
             page,
         }}))
         if (tocItem?.href) this._tocView?.setCurrentHref?.(tocItem.href)
+        if (pageItem?.href) this._pageListView?.setCurrentHref?.(pageItem.href)
     }
 
     getBookIdentifier() {
@@ -863,6 +979,13 @@ export class Reader {
     _getLastReadPage() {
         const iden = this.getBookIdentifier() ?? this.getCurrentTitle()
         return this._loadPreference(iden + '_LastPage')
+    }
+
+    _setInitialAnnotationOptions(showAnnotationsAttr, showPageDelimitAttr) {
+        const showAnnotations = this._loadPreference('show-annotations') ?? showAnnotationsAttr
+        const showPageDelimit = this._loadPreference('show-page-delimiters') ?? showPageDelimitAttr
+        this._showAnnotations = !!showAnnotations
+        this._showPageDelimiters = !!showPageDelimit
     }
 
     _setInitialFontFamily(fontFamilyAttr) {
@@ -1072,6 +1195,12 @@ export const gatherOptionsFromContainer = container => {
     if (container.hasAttribute('data-simebv-font-family')) {
         options.ebook.fontFamily = container.getAttribute('data-simebv-font-family')
     }
+    if (container.getAttribute('data-simebv-show-annotations') === 'true') {
+        options.ebook.showAnnotations = true
+    }
+    if (container.getAttribute('data-simebv-show-page-delimiters') === 'true') {
+        options.ebook.showPageDelimiters = true
+    }
     options.ebook.ebookTitle = container.getAttribute('data-simebv-ebook-title') || ''
     options.ebook.ebookAuthor = container.getAttribute('data-simebv-ebook-author') || ''
     return options
@@ -1135,8 +1264,11 @@ export * from './simebv-utils.js'
 export * from './simebv-search-dialog.js'
 export * from './simebv-filters-dialog.js'
 export * from './simebv-metadata-dialog.js'
+export * from './simebv-fonts-dialog.js'
+export * from './simebv-annotations-dialog.js'
 export * from './simebv-menu.js'
 export * from './simebv-menu-items.js'
 export * from './simebv-ebook-format.js'
 export * from '../../vendor/foliate-js/ui/tree.js'
 export * from '../../vendor/foliate-js/overlayer.js'
+export * as CFI from '../../vendor/foliate-js/epubcfi.js'

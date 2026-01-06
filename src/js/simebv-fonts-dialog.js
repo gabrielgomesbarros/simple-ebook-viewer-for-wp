@@ -7,7 +7,7 @@ export function fontsDialog(reader, injectCSS) {
     const form = document.createElement('form')
     form.setAttribute('method', 'dialog')
 
-    const header = document.createElement('h3')
+    const header = document.createElement('h2')
     header.classList.add('simebv-header-dialog')
     header.textContent = 'Select Font Style'
     header.id = 'simebv-font-dialog-header'

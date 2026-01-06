@@ -59,32 +59,41 @@ template.innerHTML = `
     font-size: smaller;
     color: var(--gray-text);
 }
-#toc-view {
-    padding: .5rem;
+#navigation-view {
     overflow-y: auto;
 }
-#toc-view li, #toc-view ol {
+.toc-view {
+    padding: .5rem;
+    display: none;
+}
+.toc-view.show {
+    display: block;
+}
+.toc-view h3 {
+    font-size: inherit;
+}
+.toc-view li, .toc-view ol {
     margin: 0;
     padding: 0;
     list-style: none;
 }
-#toc-view a, #toc-view span {
+.toc-view a, .toc-view span {
     display: block;
     border-radius: 6px;
     padding: 8px;
     margin: 2px 0;
 }
-#toc-view a {
+.toc-view a {
     color: CanvasText;
     text-decoration: none;
 }
-#toc-view a:hover {
+.toc-view a:hover {
     background: var(--active-bg);
 }
-#toc-view span {
+.toc-view span {
     color: var(--gray-text);
 }
-#toc-view svg {
+.toc-view svg {
     margin-inline-start: -24px;
     padding-inline-start: 5px;
     padding-inline-end: 6px;
@@ -93,17 +102,17 @@ template.innerHTML = `
     transition: transform .2s ease;
     opacity: .5;
 }
-#toc-view svg:hover {
+.toc-view svg:hover {
     opacity: 1;
 }
-#toc-view [aria-current] {
+.toc-view [aria-current] {
     font-weight: bold;
     background: var(--active-bg);
 }
-#toc-view [aria-expanded="false"] svg {
+.toc-view [aria-expanded="false"] svg {
     transform: rotate(-90deg);
 }
-#toc-view [aria-expanded="false"] + [role="group"] {
+.toc-view [aria-expanded="false"] + [role="group"] {
     display: none;
 }
 </style>
@@ -118,7 +127,10 @@ template.innerHTML = `
             </p>
         </div>
     </div>
-    <div id="toc-view"></div>
+    <div id="navigation-view" tabindex="-1">
+        <nav id="toc-view" class="toc-view"></nav>
+        <nav id="page-list-view" class="toc-view"></nav>
+    </div>
 </div>
 `
 
@@ -129,6 +141,10 @@ export class SideBar extends HTMLElement {
     author
     details
     tocView
+    pageListView
+    toc
+    pageList
+    #lastFocus
 
     constructor() {
         super()
@@ -143,13 +159,74 @@ export class SideBar extends HTMLElement {
         this.author = this.shadowRoot.getElementById('side-bar-author')
         this.details = this.shadowRoot.getElementById('side-bar-details')
         this.tocView = this.shadowRoot.getElementById('toc-view')
+        this.pageListView = this.shadowRoot.getElementById('page-list-view')
         this.details.textContent = __('Details', 'simple-ebook-viewer')
     }
 
+    setInitialFocus() {
+        if (this.#lastFocus) {
+            this.#lastFocus.focus()
+        }
+        else {
+            this.details.focus()
+        }
+    }
+
+    saveLastFocus() {
+        this.#lastFocus = this.shadowRoot.activeElement
+    }
+
     connectedCallback() {
+        this.setAttribute('aria-label', __('Ebook metadata and navigation trees', 'simple-ebook-viewer'))
+        this.setAttribute('role', 'navigation')
         this.root.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.dispatchEvent(new CustomEvent('side-bar-close'))
+            }
+            if (e.key === 'Tab') {
+                if (this.tocView.contains(this.shadowRoot.activeElement)) {
+                    if (!e.shiftKey) {
+                        if (this.hasPageList()) {
+                            e.preventDefault()
+                            const activeElement = this.toc.getCurrentItem()
+                            let node = this.pageList?.getCurrentItem()
+                            if (node) {
+                                node.focus()
+                            }
+                            else {
+                                node = this.pageListView.querySelector('a')
+                                node.focus()
+                            }
+                            // node.tabIndex = 0
+                            // if (activeElement) activeElement.tabIndex = -1
+                        }
+                        else {
+                            this.dispatchEvent(new CustomEvent('side-bar-close'))
+                        }
+                    }
+                }
+                else if (this.pageListView.contains(this.shadowRoot.activeElement)) {
+                    if (e.shiftKey && this.hasToc()) {
+                        e.preventDefault()
+                        const activeElement = this.pageList.getCurrentItem()
+                        let node = this.toc?.getCurrentItem()
+                        if (node) {
+                            node.focus()
+                        }
+                        else {
+                            node = this.tocView.querySelector('a')
+                            node.focus()
+                        }
+                        // node.tabIndex = 0
+                        // if (activeElement) activeElement.tabIndex = -1
+                    }
+                    else if (!e.shiftKey) {
+                        this.dispatchEvent(new CustomEvent('side-bar-close'))
+                    }
+                }
+                else if (this.shadowRoot.activeElement === this.details && e.shiftKey) {
+                    this.dispatchEvent(new CustomEvent('side-bar-close'))
+                }
             }
         })
         this.root.addEventListener('click', () => this.dispatchEvent(new CustomEvent('side-bar-clicked')))
@@ -185,7 +262,29 @@ export class SideBar extends HTMLElement {
     }
 
     attachToc(toc) {
-        this.tocView.append(toc)
+        this.toc = toc
+        this.tocView.textContent = ''
+        const h = document.createElement('h3')
+        h.textContent = __('Table of contents', 'simple-ebook-viewer')
+        this.tocView.append(h, toc.element)
+        this.tocView.classList.add('show')
+    }
+
+    attachPageList(pageList) {
+        this.pageList = pageList
+        this.pageListView.textContent = ''
+        const h = document.createElement('h3')
+        h.textContent = __('Page list', 'simple-ebook-viewer')
+        this.pageListView.append(h, pageList.element)
+        this.pageListView.classList.add('show')
+    }
+
+    hasToc() {
+        return this.tocView.children.length > 0
+    }
+
+    hasPageList() {
+        return this.pageListView.children.length > 0
     }
 }
 
