@@ -61,3 +61,69 @@ export function convertFontSizePxToRem(data, defaultSize) {
             return 'font-size:' + (Math.round((n / defaultSize) * 1000) / 1000) + 'rem'
         })
 }
+
+
+// CSS to inject in iframe of reflowable ebooks
+export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor, forcedColorScheme, fontFamily }) => `
+    @namespace epub "http://www.idpf.org/2007/ops";
+    :root {
+        color-scheme: ${colorScheme} !important;
+        font-size: ${fontSize}px;
+        background-color: ${bgColor};
+    }
+    /* https://github.com/whatwg/html/issues/5426 */
+    @media all and (prefers-color-scheme: dark) {
+        a:link {
+            color: ${colorScheme.includes('dark') ? 'lightblue' : 'LinkText'};
+        }
+        ${colorScheme.includes('dark')
+          ? 'a:visited { color: VisitedText; }'
+          : ''
+        }
+        ${!colorScheme.includes('dark')
+            ? '[epub|type~="se:image.color-depth.black-on-transparent"] { filter: none !important; }'
+            : ''
+        }
+    }
+    ${forcedColorScheme.includes('dark')
+        ? 'body, body * { color: #ffffff !important; background-color: ' + bgColor + ' !important; border-color: #ffffff !important; }'
+        : ''
+    }
+    ${forcedColorScheme.includes('light')
+        ? 'body, body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
+        : ''
+    }
+    ${fontFamily !== 'auto'
+        ? 'body, body * { font-family: ' + fontFamily + ' !important; }'
+        : ''
+    }
+    p, li, blockquote, dd {
+        line-height: ${spacing};
+        text-align: ${justify ? 'justify' : 'start'};
+        -webkit-hyphens: ${hyphenate ? 'auto' : 'manual'};
+        hyphens: ${hyphenate ? 'auto' : 'manual'};
+        -webkit-hyphenate-limit-before: 3;
+        -webkit-hyphenate-limit-after: 2;
+        -webkit-hyphenate-limit-lines: 2;
+        hanging-punctuation: allow-end last;
+        widows: 2;
+    }
+    /* prevent the above from overriding the align attribute */
+    [align="left"] { text-align: left; }
+    [align="right"] { text-align: right; }
+    [align="center"] { text-align: center; }
+    [align="justify"] { text-align: justify; }
+
+    pre {
+        white-space: pre-wrap !important;
+    }
+    aside[epub|type~="endnote"],
+    aside[epub|type~="footnote"],
+    aside[epub|type~="note"],
+    aside[epub|type~="rearnote"] {
+        display: none;
+    }
+    a:focus {
+        text-decoration: underline dotted .1em;
+    }
+`

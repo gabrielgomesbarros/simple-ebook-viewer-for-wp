@@ -6,7 +6,7 @@ import { createTOCView } from '../../vendor/foliate-js/ui/tree.js'
 import { Overlayer } from '../../vendor/foliate-js/overlayer.js'
 import * as CFI from '../../vendor/foliate-js/epubcfi.js'
 import { storageAvailable, isNumeric, pageListOutline } from './simebv-utils.js'
-import { transformDoc, convertFontSizePxToRem } from './simebv-transform-ebook.js'
+import { transformDoc, convertFontSizePxToRem, getCSS } from './simebv-transform-ebook.js'
 import { searchDialog } from './simebv-search-dialog.js'
 import { colorFiltersDialog } from './simebv-filters-dialog.js'
 import { metadataDialog, MetadataFormatter } from './simebv-metadata-dialog.js'
@@ -23,69 +23,21 @@ const { __, _x, _n, sprintf } = wp.i18n;
 import '../css/simebv-container.css'
 // Import css for the Viewer's UI, as string
 import viewerUiCss from '../css/simebv-viewer.css?raw'
-// CSS to inject in iframe of reflowable ebooks
-export const getCSS = ({ spacing, justify, hyphenate, fontSize, colorScheme, bgColor, forcedColorScheme, fontFamily }) => `
-    @namespace epub "http://www.idpf.org/2007/ops";
-    :root {
-        color-scheme: ${colorScheme} !important;
-        font-size: ${fontSize}px;
-        background-color: ${bgColor};
-    }
-    /* https://github.com/whatwg/html/issues/5426 */
-    @media all and (prefers-color-scheme: dark) {
-        a:link {
-            color: ${colorScheme.includes('dark') ? 'lightblue' : 'LinkText'};
-        }
-        ${colorScheme.includes('dark')
-          ? 'a:visited { color: VisitedText; }'
-          : ''
-        }
-        ${!colorScheme.includes('dark')
-            ? '[epub|type~="se:image.color-depth.black-on-transparent"] { filter: none !important; }'
-            : ''
-        }
-    }
-    ${forcedColorScheme.includes('dark')
-        ? 'body, body * { color: #ffffff !important; background-color: ' + bgColor + ' !important; border-color: #ffffff !important; }'
-        : ''
-    }
-    ${forcedColorScheme.includes('light')
-        ? 'body, body * { color: #000000 !important; background-color: ' + bgColor + ' !important; border-color: #000000 !important; }'
-        : ''
-    }
-    ${fontFamily !== 'auto'
-        ? 'body, body * { font-family: ' + fontFamily + ' !important; }'
-        : ''
-    }
-    p, li, blockquote, dd {
-        line-height: ${spacing};
-        text-align: ${justify ? 'justify' : 'start'};
-        -webkit-hyphens: ${hyphenate ? 'auto' : 'manual'};
-        hyphens: ${hyphenate ? 'auto' : 'manual'};
-        -webkit-hyphenate-limit-before: 3;
-        -webkit-hyphenate-limit-after: 2;
-        -webkit-hyphenate-limit-lines: 2;
-        hanging-punctuation: allow-end last;
-        widows: 2;
-    }
-    /* prevent the above from overriding the align attribute */
-    [align="left"] { text-align: left; }
-    [align="right"] { text-align: right; }
-    [align="center"] { text-align: center; }
-    [align="justify"] { text-align: justify; }
 
-    pre {
-        white-space: pre-wrap !important;
-    }
-    aside[epub|type~="endnote"],
-    aside[epub|type~="footnote"],
-    aside[epub|type~="note"],
-    aside[epub|type~="rearnote"] {
-        display: none;
-    }
-    a:focus {
-        text-decoration: underline dotted .1em;
-    }
+const readerMarkup = `
+<style>
+${viewerUiCss}
+</style>
+<div id="simebv-reader-root">
+    <div id="simebv-loading-overlay" class="simebv-show">
+        <p id="simebv-loading-overlay-text">Loading...</p>
+    </div>
+    <div id="simebv-dimming-overlay"></div>
+    <section id="simebv-side-bar"></section>
+    <div id="simebv-header-bar"></div>
+    <div id="simebv-nav-bar"></div>
+    <div id="simebv-book-container" tabindex="0"></div>
+</div>
 `
 
 const percentFormat = new Intl.NumberFormat('en', { style: 'percent' })
@@ -1122,22 +1074,6 @@ export class Reader {
         root.getElementById('simebv-book-container').setAttribute('aria-label', __('Ebook contents', 'simple-ebook-viewer'))
     }
 }
-
-const readerMarkup = `
-<style>
-${viewerUiCss}
-</style>
-<div id="simebv-reader-root">
-    <div id="simebv-loading-overlay" class="simebv-show">
-        <p id="simebv-loading-overlay-text">Loading...</p>
-    </div>
-    <div id="simebv-dimming-overlay"></div>
-    <section id="simebv-side-bar"></section>
-    <div id="simebv-header-bar"></div>
-    <div id="simebv-nav-bar"></div>
-    <div id="simebv-book-container" tabindex="0"></div>
-</div>
-`
 
 
 // from vendor/foliate-js/view.js
