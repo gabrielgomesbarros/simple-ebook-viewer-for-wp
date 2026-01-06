@@ -18,66 +18,6 @@ export function storageAvailable(type) {
     }
 }
 
-
-export function addCSPMeta(data, type) {
-    try {
-        let doc
-        typeof data === 'string'
-            ? doc = new DOMParser().parseFromString(data, type)
-            : doc = data
-        const meta = doc.createElement('meta')
-        meta.setAttribute('http-equiv', 'content-security-policy')
-        meta.setAttribute('content', "script-src 'none'; script-src-attr 'none'; script-src-elem 'none'")
-        meta.setAttribute('data-simebv-inject', 'true')
-        doc.head ? doc.head.prepend(meta) : doc.documentElement.prepend(meta)
-        return doc.documentElement.outerHTML
-    }
-    catch (e) { console.error(e) }
-    return data
-}
-
-export function removeInlineScripts(data, type) {
-    try {
-        let doc
-        typeof data === 'string'
-            ? doc = new DOMParser().parseFromString(data, type)
-            : doc = data
-        doc.querySelectorAll('script').forEach(el => el.replaceWith(doc.createElement('style')))
-        return doc.documentElement.outerHTML
-    }
-    catch (e) { console.error(e) }
-    return data
-}
-
-export function convertFontSizePxToRem(data, defaultSize) {
-    return data.replace(
-        /(?<=[{\s;])font-size:\s*([0-9]*\.?[0-9]+)px/gi,
-        (match, p1, offset, string) => {
-            const n = parseFloat(p1)
-            return 'font-size:' + (Math.round((n / defaultSize) * 1000) / 1000) + 'rem'
-        })
-}
-
-export function injectMathJax(data, type, url, config) {
-    try {
-        let doc
-        typeof data === 'string'
-            ? doc = new DOMParser().parseFromString(data, type)
-            : doc = data
-        const scriptConfig = doc.createElement('script')
-        scriptConfig.textContent = config
-        const script = doc.createElement('script')
-        script.setAttribute('defer', 'true')
-        script.src = url
-        doc.head
-            ? doc.head.append(scriptConfig, script)
-            : doc.documentElement.prepend(scriptConfig, script)
-        return doc.documentElement.outerHTML
-    }
-    catch (e) { console.error(e) }
-    return data
-}
-
 export function isNumeric(v) {
     return parseFloat(v) === Number(v)
 }
@@ -89,4 +29,23 @@ export function getLang(el) {
         }
         el = el.parentElement
     }
+}
+
+export function pageListOutline(rects, options = {}) {
+    const { color = 'red', width: strokeWidth = 2, radius = 3, label = '', fontSize = 16 } = options
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g')
+    g.setAttribute('fill', 'none')
+    g.setAttribute('stroke', color)
+    g.setAttribute('stroke-width', strokeWidth)
+    if (rects.length > 0) {
+        const { left, top, height, width } = rects[0]
+        const pathHeight = Math.min(height, fontSize * 1.7)
+        const el = document.createElementNS('http://www.w3.org/2000/svg', 'path')
+        el.setAttribute('d', `M ${left - 1},${top + pathHeight} v ${-pathHeight}`)// l 6 -3`)
+        el.style.opacity = 'var(--overlayer-highlight-opacity, .8)'
+        el.style.mixBlendMode = 'var(--overlayer-highlight-blend-mode, normal)'
+        g.append(el)
+        g.onclick = () => {}  // for single tap opening on iOS
+    }
+    return g
 }
