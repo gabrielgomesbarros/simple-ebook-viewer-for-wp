@@ -223,7 +223,7 @@ export class Reader {
 
         this.setLocalizedDefaultInterface(this._root)
 
-        this._defaultFontSize = this.getDefaultFontSize()
+        this._defaultFontSize = Reader.getDefaultFontSize(this._rootDiv)
 
         document.dispatchEvent(new CustomEvent('simebv-viewer-loaded'))
     }
@@ -236,13 +236,13 @@ export class Reader {
         return this.container.getBoundingClientRect().width
     }
 
-    getDefaultFontSize() {
+    static getDefaultFontSize(root) {
         const fake = document.createElement('div')
         fake.style.visibility = 'hidden'
         fake.style.position = 'absolute'
         fake.style.fontSize = '1rem'
-        this._rootDiv.append(fake)
-        const computedFontSize = parseFloat(window.getComputedStyle(fake).fontSize)
+        root.append(fake)
+        const computedFontSize = parseFloat(globalThis.getComputedStyle(fake).fontSize)
         fake.remove()
         return isNaN(computedFontSize) ? 16 : computedFontSize
     }
@@ -257,7 +257,7 @@ export class Reader {
                 draw(Overlayer.highlight, { color: annotation.color })
                 break
             case 'page-list':
-                const fontSize = this._defaultFontSize ?? this.getDefaultFontSize()
+                const fontSize = doc?.body ? Reader.getDefaultFontSize(doc.body) : this._defaultFontSize
                 draw(pageListOutline, { color: '#E55330', label: annotation.label, type: annotation.type, fontSize })
                 break
             default: {
@@ -269,6 +269,27 @@ export class Reader {
 
     pageListCreateOverlay(e) {
         const { index } = e.detail
+        if (!this.pageList.has(index)) {
+            const pageList = this.view.book.pageList
+            if (!pageList) {
+                return
+            }
+            const doc = this.view.renderer.getContents()[0].doc
+            const { pageList: pl, pageListByValue } = createPageListForAnnotations(this, pageList, index, doc)
+            this.pageList.set(index, pl)
+            for (const [v, notes] of pageListByValue.entries()) {
+                this.pageListByValue.set(v, notes)
+            }
+            const links = this._sideBar.pageList.element.querySelectorAll('a')
+            for (const p of pl) {
+                for (const a of links) {
+                    if (a.getAttribute('href') === p.href) {
+                        a.setAttribute('data-simebv-cfi', p.value)
+                        break
+                    }
+                }
+            }
+        }
         const list = this.pageList.get(index)
         if (list) {
             for (const page of list) {
@@ -615,15 +636,12 @@ export class Reader {
         // load and show page delimiters if the ebook contains a page list
         const pageList = book.pageList
         if (pageList) {
-            const { pageList: pl, pageListByValue } = await createPageListForAnnotations(this, pageList)
-            this.pageList = pl
-            this.pageListByValue = pageListByValue
             if (this._showPageDelimiters) {
                 this.view.addEventListener('create-overlay', this.boundPageListCreateOverlay)
                 this.view.addEventListener('show-annotation', this.boundPageListShowAnnotation)
             }
-            this._pageListView = createTOCView(pageList, href => {
-                this.view.goTo(href).catch(e => console.error(e))
+            this._pageListView = createTOCView(pageList, target => {
+                this.view.goTo(target).catch(e => console.error(e))
                 this._closeMenus()
             })
             this._sideBar.attachPageList(this._pageListView)

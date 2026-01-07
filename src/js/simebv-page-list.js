@@ -24,6 +24,9 @@ function nodeFilter(node) {
     if (['SCRIPT', 'NOSCRIPT', 'STYLE'].includes(node.tagName)) {
         return NodeFilter.FILTER_REJECT
     }
+    if (globalThis.getComputedStyle(node).display === 'none') {
+        return NodeFilter.FILTER_REJECT
+    }
     return NodeFilter.FILTER_ACCEPT
 }
 
@@ -44,27 +47,24 @@ function nodeFilter(node) {
  * html element that follows the start node; and if there isn't even this,
  * it skips the entry.
  */
-export async function createPageListForAnnotations(reader, bookPageList) {
-    const pageList = new Map()
+export function createPageListForAnnotations(reader, bookPageList, index, doc) {
+    const pageList = []
     const pageListByValue = new Map()
-    let prevIndex = -1
-    let doc
     for (const p of bookPageList) {
-        const { index, anchor } = reader.view.resolveNavigation(p.href)
-        if (index !== prevIndex) {
-            doc = await reader.view.book.sections[index].createDocument()
-            prevIndex = index
+        const { index: i, anchor } = reader.view.resolveNavigation(p.href)
+        if (i !== index) {
+            continue
         }
         const node = anchor(doc)
         let startContainer = node
-        const sectionCFI = reader.view.getCFI(index)
-        if (node.textContent?.trim()) {
+        const display = globalThis.getComputedStyle(node).display
+        if (node.textContent?.trim() && display !== 'none') {
             const walker = document.createTreeWalker(
                 node, NodeFilter.SHOW_ELEMENT|NodeFilter.SHOW_TEXT, nodeFilter
             )
             while (walker.nextNode()) {
                 const child = walker.currentNode
-                if (child instanceof Text && child.textContent.trim()) {
+                if (child.nodeType === Node.TEXT_NODE && child.textContent.trim()) {
                     startContainer = child
                     break
                 }
@@ -73,7 +73,7 @@ export async function createPageListForAnnotations(reader, bookPageList) {
         let endContainer
         let range = new Range()
         range.setStart(startContainer, 0)
-        if (startContainer instanceof Text) {
+        if (startContainer.nodeType === Node.TEXT_NODE) {
             range.setEnd(startContainer, startContainer.length - 1)
         }
         else {
@@ -88,13 +88,9 @@ export async function createPageListForAnnotations(reader, bookPageList) {
                 if (node.contains(current)) {
                     continue
                 }
-                if (current.textContent.trim() && current.childNodes) {
-                    for (const child of current.childNodes) {
-                        if (child instanceof Text && child.textContent.trim()) {
-                            endContainer = child
-                            break extLoop
-                        }
-                    }
+                if (current.nodeType === Node.TEXT_NODE && current.textContent.trim()) {
+                    endContainer = current
+                    break extLoop
                 }
             }
             if (!endContainer) {
@@ -103,7 +99,7 @@ export async function createPageListForAnnotations(reader, bookPageList) {
                 while (walker.nextNode()) {
                     const current = walker.currentNode
                     if (node.contains(current)) continue
-                    if (current.nodeType === 1) {
+                    if (current.nodeType === Node.ELEMENT_NODE) {
                         endContainer = current
                         break
                     }
@@ -112,16 +108,12 @@ export async function createPageListForAnnotations(reader, bookPageList) {
                     continue
                 }
             }
-            range.setEnd(endContainer, 0)
+            range.setEnd(endContainer, endContainer.nodeType === Node.TEXT_NODE ? 1 : 0)
         }
+        const sectionCFI = reader.view.getCFI(index)
         const cfiRange = sectionCFI.replace(/\)$/, '!') + CFI.fromRange(range).replace(/^epubcfi\(/, '')
-        const annotation = { value: cfiRange, type: 'page-list', label: p.label }
-        if (pageList.has(index)) {
-            pageList.get(index).push(annotation)
-        }
-        else {
-            pageList.set(index, [annotation])
-        }
+        const annotation = { value: cfiRange, type: 'page-list', label: p.label, href: p.href }
+        pageList.push(annotation)
         pageListByValue.set(annotation.value, annotation)
     }
     return { pageList, pageListByValue }
