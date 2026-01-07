@@ -1,6 +1,22 @@
 # This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
 # For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-nodejs
 
+- name: Workflow Dispatch
+  # You may pin to the exact commit or the version.
+  # uses: benc-uk/workflow-dispatch@25b02cc069be46d637e8fe2f1e8484008e9e9609
+  uses: benc-uk/workflow-dispatch@v1.2.3
+  with:
+    # Name, filename or ID of workflow to run
+    workflow: 
+    # GitHub token with repo write access, only required if the workflow is in a different repository
+    token: # optional, default is ${{ github.token }}
+    # Inputs to pass to the workflow, must be a JSON string
+    inputs: # optional
+    # The reference can be a branch, tag, or a commit SHA
+    ref: # optional
+    # Repo owner & name, slash separated, only set if invoking a workflow in a different repo
+    repo: # optional
+          
 name: Node.js CI
 
 on:
